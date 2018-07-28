@@ -25,10 +25,10 @@ import '../runner/flutter_command.dart';
 /// ```
 ///   'linter': '0.1.35', // TODO(yjbanov): https://github.com/dart-lang/linter/issues/824
 /// ```
-const Map<String, String> _kManuallyPinnedDependencies = <String, String>{
+const Map<String, String> _kManuallyPinnedDependencies = const <String, String>{
   // Add pinned packages here.
   'mockito': '3.0.0-beta', // TODO(aam): https://github.com/dart-lang/mockito/issues/110
-  'matcher': '0.12.2', // TODO(ianh): https://github.com/flutter/flutter/issues/18608, https://github.com/dart-lang/matcher/pull/88
+  'matcher': '0.12.2+1', // TODO(ianh): https://github.com/flutter/flutter/issues/18608, https://github.com/dart-lang/matcher/pull/88
   'flutter_gallery_assets': '0.1.4', // See //examples/flutter_gallery/pubspec.yaml
 };
 

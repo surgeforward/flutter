@@ -817,9 +817,9 @@ void main() {
             const Text('Label 2'),
             new Row(
               children: const <Widget>[
-                Text('Label 3'),
-                Text('Label 4'),
-                Text('Label 5'),
+                const Text('Label 3'),
+                const Text('Label 4'),
+                const Text('Label 5'),
               ],
             ),
           ],
@@ -877,9 +877,9 @@ void main() {
               angle: pi / 2.0,
               child: new Row(
                 children: const <Widget>[
-                  Text('Label 3'),
-                  Text('Label 4'),
-                  Text('Label 5'),
+                  const Text('Label 3'),
+                  const Text('Label 4'),
+                  const Text('Label 5'),
                 ],
               ),
             ),
@@ -1018,6 +1018,31 @@ void main() {
     );
 
     handle.dispose();
+    semantics.dispose();
+  });
+
+  testWidgets('Semantics excludeSemantics ignores children', (WidgetTester tester) async {
+    final SemanticsTester semantics = new SemanticsTester(tester);
+    await tester.pumpWidget(new Semantics(
+      label: 'label',
+      excludeSemantics: true,
+      textDirection: TextDirection.ltr,
+      child: new Semantics(
+        label: 'other label',
+        textDirection: TextDirection.ltr,
+      ),
+    ));
+
+    expect(semantics, hasSemantics(
+      new TestSemantics(
+        children: <TestSemantics>[
+          new TestSemantics(
+            label: 'label',
+            textDirection: TextDirection.ltr,
+          ),
+        ],
+      ), ignoreId: true, ignoreRect: true, ignoreTransform: true)
+    );
     semantics.dispose();
   });
 }
