@@ -13,7 +13,7 @@ import 'colors.dart';
 import 'input_border.dart';
 import 'theme.dart';
 
-const Duration _kTransitionDuration = const Duration(milliseconds: 200);
+const Duration _kTransitionDuration = Duration(milliseconds: 200);
 const Curve _kTransitionCurve = Curves.fastOutSlowIn;
 
 // Defines the gap in the InputDecorator's outline border where the
@@ -259,7 +259,7 @@ class _HelperError extends StatefulWidget {
 class _HelperErrorState extends State<_HelperError> with SingleTickerProviderStateMixin {
   // If the height of this widget and the counter are zero ("empty") at
   // layout time, no space is allocated for the subtext.
-  static const Widget empty = const SizedBox();
+  static const Widget empty = SizedBox();
 
   AnimationController _controller;
   Widget _helper;
@@ -540,12 +540,14 @@ class _RenderDecoration extends RenderBox {
     @required _Decoration decoration,
     @required TextDirection textDirection,
     @required TextBaseline textBaseline,
+    @required bool isFocused,
   }) : assert(decoration != null),
        assert(textDirection != null),
        assert(textBaseline != null),
        _decoration = decoration,
        _textDirection = textDirection,
-       _textBaseline = textBaseline;
+       _textBaseline = textBaseline,
+       _isFocused = isFocused;
 
   final Map<_DecorationSlot, RenderBox> slotToChild = <_DecorationSlot, RenderBox>{};
   final Map<RenderBox, _DecorationSlot> childToSlot = <RenderBox, _DecorationSlot>{};
@@ -686,6 +688,16 @@ class _RenderDecoration extends RenderBox {
     markNeedsLayout();
   }
 
+  bool get isFocused => _isFocused;
+  bool _isFocused;
+  set isFocused(bool value) {
+    assert(value != null);
+    if (_isFocused == value)
+      return;
+    _isFocused = value;
+    markNeedsSemanticsUpdate();
+  }
+
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
@@ -708,6 +720,35 @@ class _RenderDecoration extends RenderBox {
   @override
   void visitChildren(RenderObjectVisitor visitor) {
     _children.forEach(visitor);
+  }
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    if (icon != null)
+      visitor(icon);
+    if (prefix != null)
+      visitor(prefix);
+    if (prefixIcon != null)
+      visitor(prefixIcon);
+    if (isFocused && hint != null) {
+      // Bypass opacity to always read hint when focused. This prevents the
+      // label from changing when text is entered.
+      final RenderProxyBox typedHint = hint;
+      visitor(typedHint.child);
+    } else if (!isFocused && label != null)
+      visitor(label);
+    if (input != null)
+      visitor(input);
+    if (suffixIcon != null)
+      visitor(suffixIcon);
+    if (suffix != null)
+      visitor(suffix);
+    if (container != null)
+      visitor(container);
+    if (helperError != null)
+      visitor(helperError);
+    if (counter != null)
+      visitor(counter);
   }
 
   @override
@@ -1301,6 +1342,7 @@ class _Decorator extends RenderObjectWidget {
     @required this.decoration,
     @required this.textDirection,
     @required this.textBaseline,
+    @required this.isFocused,
   }) : assert(decoration != null),
        assert(textDirection != null),
        assert(textBaseline != null),
@@ -1309,6 +1351,7 @@ class _Decorator extends RenderObjectWidget {
   final _Decoration decoration;
   final TextDirection textDirection;
   final TextBaseline textBaseline;
+  final bool isFocused;
 
   @override
   _RenderDecorationElement createElement() => new _RenderDecorationElement(this);
@@ -1319,6 +1362,7 @@ class _Decorator extends RenderObjectWidget {
       decoration: decoration,
       textDirection: textDirection,
       textBaseline: textBaseline,
+      isFocused: isFocused,
     );
   }
 
@@ -1327,7 +1371,8 @@ class _Decorator extends RenderObjectWidget {
     renderObject
      ..decoration = decoration
      ..textDirection = textDirection
-     ..textBaseline = textBaseline;
+     ..textBaseline = textBaseline
+     ..isFocused = isFocused;
   }
 }
 
@@ -1531,10 +1576,10 @@ class _InputDecoratorState extends State<InputDecorator> with TickerProviderStat
 
     // dark theme: 10% white (enabled), 5% white (disabled)
     // light theme: 4% black (enabled), 2% black (disabled)
-    const Color darkEnabled = const Color(0x1AFFFFFF);
-    const Color darkDisabled = const Color(0x0DFFFFFF);
-    const Color lightEnabled = const Color(0x0A000000);
-    const Color lightDisabled = const Color(0x05000000);
+    const Color darkEnabled = Color(0x1AFFFFFF);
+    const Color darkDisabled = Color(0x0DFFFFFF);
+    const Color lightEnabled = Color(0x0A000000);
+    const Color lightDisabled = Color(0x05000000);
 
     switch (themeData.brightness) {
       case Brightness.dark:
@@ -1784,6 +1829,7 @@ class _InputDecoratorState extends State<InputDecorator> with TickerProviderStat
         ? const EdgeInsets.fromLTRB(12.0, 20.0, 12.0, 12.0)
         : const EdgeInsets.fromLTRB(12.0, 24.0, 12.0, 16.0));
     }
+
     return new _Decorator(
       decoration: new _Decoration(
         contentPadding: contentPadding,
@@ -1803,9 +1849,10 @@ class _InputDecoratorState extends State<InputDecorator> with TickerProviderStat
         helperError: helperError,
         counter: counter,
         container: container,
-      ),
-      textDirection: textDirection,
-      textBaseline: textBaseline,
+    ),
+    textDirection: textDirection,
+    textBaseline: textBaseline,
+    isFocused: isFocused,
     );
   }
 }
@@ -2810,7 +2857,7 @@ class InputDecorationTheme extends Diagnosticable {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    const InputDecorationTheme defaultTheme = const InputDecorationTheme();
+    const InputDecorationTheme defaultTheme = InputDecorationTheme();
     properties.add(new DiagnosticsProperty<TextStyle>('labelStyle', labelStyle, defaultValue: defaultTheme.labelStyle));
     properties.add(new DiagnosticsProperty<TextStyle>('helperStyle', helperStyle, defaultValue: defaultTheme.helperStyle));
     properties.add(new DiagnosticsProperty<TextStyle>('hintStyle', hintStyle, defaultValue: defaultTheme.hintStyle));
