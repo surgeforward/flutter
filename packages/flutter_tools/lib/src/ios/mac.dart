@@ -413,7 +413,7 @@ Future<XcodeBuildResult> buildXcodeProject({
   Status initialBuildStatus;
   Directory tempDir;
 
-  if (logger.supportsColor) {
+  if (logger.hasTerminal) {
     tempDir = fs.systemTempDirectory.createTempSync('flutter_build_log_pipe.');
     final File scriptOutputPipeFile = tempDir.childFile('pipe_to_stdout');
     os.makePipe(scriptOutputPipeFile.path);
@@ -455,8 +455,7 @@ Future<XcodeBuildResult> buildXcodeProject({
   // Free pipe file.
   tempDir?.deleteSync(recursive: true);
   printStatus(
-    'Xcode build done.',
-    ansiAlternative: 'Xcode build done.'.padRight(kDefaultStatusPadding + 1)
+    'Xcode build done.'.padRight(kDefaultStatusPadding + 1)
         + '${getElapsedAsSeconds(buildStopwatch.elapsed).padLeft(5)}',
   );
 
