@@ -49,9 +49,9 @@ typedef _RegisterServiceExtensionCallback = void Function({
 /// A proxy layer is used for cases where a layer needs to be placed into
 /// multiple trees of layers.
 class _ProxyLayer extends Layer {
-  final Layer _layer;
-
   _ProxyLayer(this._layer);
+
+  final Layer _layer;
 
   @override
   void addToScene(ui.SceneBuilder builder, [Offset layerOffset = Offset.zero]) {
@@ -66,9 +66,6 @@ class _ProxyLayer extends Layer {
 /// secondary screenshot canvas so that a screenshot can be recorded at the same
 /// time as performing a normal paint.
 class _MulticastCanvas implements Canvas {
-  final Canvas _main;
-  final Canvas _screenshot;
-
   _MulticastCanvas({
     @required Canvas main,
     @required Canvas screenshot,
@@ -76,6 +73,9 @@ class _MulticastCanvas implements Canvas {
        assert(screenshot != null),
        _main = main,
        _screenshot = screenshot;
+
+  final Canvas _main;
+  final Canvas _screenshot;
 
   @override
   void clipPath(Path path, {bool doAntiAlias = true}) {
@@ -921,13 +921,11 @@ class WidgetInspectorService {
 
   /// Called to register service extensions.
   ///
-  /// Service extensions are only exposed when the observatory is
-  /// included in the build, which should only happen in checked mode
-  /// and in profile mode.
-  ///
   /// See also:
   ///
   ///  * <https://github.com/dart-lang/sdk/blob/master/runtime/vm/service/service.md#rpcs-requests-and-responses>
+  ///  * [BindingBase.initServiceExtensions], which explains when service
+  ///    extensions can be used.
   void initServiceExtensions(
       _RegisterServiceExtensionCallback registerServiceExtensionCallback) {
     _registerServiceExtensionCallback = registerServiceExtensionCallback;
@@ -1027,36 +1025,33 @@ class WidgetInspectorService {
       name: 'isWidgetCreationTracked',
       callback: isWidgetCreationTracked,
     );
-    assert(() {
-      registerServiceExtension(
-        name: 'screenshot',
-        callback: (Map<String, String> parameters) async {
-          assert(parameters.containsKey('id'));
-          assert(parameters.containsKey('width'));
-          assert(parameters.containsKey('height'));
+    registerServiceExtension(
+      name: 'screenshot',
+      callback: (Map<String, String> parameters) async {
+        assert(parameters.containsKey('id'));
+        assert(parameters.containsKey('width'));
+        assert(parameters.containsKey('height'));
 
-          final ui.Image image = await screenshot(
-            toObject(parameters['id']),
-            width: double.parse(parameters['width']),
-            height: double.parse(parameters['height']),
-            margin: parameters.containsKey('margin') ?
-                double.parse(parameters['margin']) : 0.0,
-            maxPixelRatio: parameters.containsKey('maxPixelRatio') ?
-                double.parse(parameters['maxPixelRatio']) : 1.0,
-            debugPaint: parameters['debugPaint'] == 'true',
-          );
-          if (image == null) {
-            return <String, Object>{'result': null};
-          }
-          final ByteData byteData = await image.toByteData(format:ui.ImageByteFormat.png);
+        final ui.Image image = await screenshot(
+          toObject(parameters['id']),
+          width: double.parse(parameters['width']),
+          height: double.parse(parameters['height']),
+          margin: parameters.containsKey('margin') ?
+              double.parse(parameters['margin']) : 0.0,
+          maxPixelRatio: parameters.containsKey('maxPixelRatio') ?
+              double.parse(parameters['maxPixelRatio']) : 1.0,
+          debugPaint: parameters['debugPaint'] == 'true',
+        );
+        if (image == null) {
+          return <String, Object>{'result': null};
+        }
+        final ByteData byteData = await image.toByteData(format:ui.ImageByteFormat.png);
 
-          return <String, Object>{
-            'result': base64.encoder.convert(Uint8List.view(byteData.buffer)),
-          };
-        },
-      );
-      return true;
-    }());
+        return <String, Object>{
+          'result': base64.encoder.convert(Uint8List.view(byteData.buffer)),
+        };
+      },
+    );
   }
 
   /// Clear all InspectorService object references.
