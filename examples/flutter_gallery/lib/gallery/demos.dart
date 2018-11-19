@@ -93,7 +93,7 @@ List<GalleryDemo> _buildGalleryDemos() {
       icon: GalleryIcons.shrine,
       category: _kDemos,
       routeName: ShrineDemo.routeName,
-      buildRoute: (BuildContext context) => ShrineDemo(),
+      buildRoute: (BuildContext context) => const ShrineDemo(),
     ),
     GalleryDemo(
       title: 'Contact profile',
@@ -499,6 +499,13 @@ List<GalleryDemo> _buildGalleryDemos() {
       routeName: CupertinoSwitchDemo.routeName,
       documentationUrl: 'https://docs.flutter.io/flutter/cupertino/CupertinoSwitch-class.html',
       buildRoute: (BuildContext context) => CupertinoSwitchDemo(),
+    ),
+    GalleryDemo(
+      title: 'Text Fields',
+      icon: GalleryIcons.text_fields_alt,
+      category: _kCupertinoComponents,
+      routeName: CupertinoTextFieldDemo.routeName,
+      buildRoute: (BuildContext context) => CupertinoTextFieldDemo(),
     ),
 
     // Media
