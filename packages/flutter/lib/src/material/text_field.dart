@@ -150,7 +150,7 @@ class TextField extends StatefulWidget {
   /// The [focusNode] is a long-lived object that's typically managed by a
   /// [StatefulWidget] parent. See [FocusNode] for more information.
   ///
-  /// To give the keyboard focus to this widget provide a [focusNode] and then
+  /// To give the keyboard focus to this widget, provide a [focusNode] and then
   /// use the current [FocusScope] to request the focus:
   ///
   /// ```dart
@@ -362,6 +362,7 @@ class TextField extends StatefulWidget {
     super.debugFillProperties(properties);
     properties.add(DiagnosticsProperty<TextEditingController>('controller', controller, defaultValue: null));
     properties.add(DiagnosticsProperty<FocusNode>('focusNode', focusNode, defaultValue: null));
+    properties.add(DiagnosticsProperty<bool>('enabled', enabled, defaultValue: null));
     properties.add(DiagnosticsProperty<InputDecoration>('decoration', decoration));
     properties.add(DiagnosticsProperty<TextInputType>('keyboardType', keyboardType, defaultValue: TextInputType.text));
     properties.add(DiagnosticsProperty<TextStyle>('style', style, defaultValue: null));
