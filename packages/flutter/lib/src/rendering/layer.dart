@@ -8,6 +8,7 @@ import 'dart:ui' as ui show EngineLayer, Image, ImageFilter, PathMetric,
                             Picture, PictureRecorder, Scene, SceneBuilder;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/painting.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -125,51 +126,31 @@ abstract class Layer extends AbstractNode with DiagnosticableTreeMixin {
     parent?._removeChild(this);
   }
 
-  /// Replaces this layer with the given layer in the parent layer's child list.
-  void replaceWith(Layer newLayer) {
-    assert(parent != null);
-    assert(attached == parent.attached);
-    assert(newLayer.parent == null);
-    assert(newLayer._nextSibling == null);
-    assert(newLayer._previousSibling == null);
-    assert(!newLayer.attached);
-    newLayer._nextSibling = nextSibling;
-    if (_nextSibling != null)
-      _nextSibling._previousSibling = newLayer;
-    newLayer._previousSibling = previousSibling;
-    if (_previousSibling != null)
-      _previousSibling._nextSibling = newLayer;
-    assert(() {
-      Layer node = this;
-      while (node.parent != null)
-        node = node.parent;
-      assert(node != newLayer); // indicates we are about to create a cycle
-      return true;
-    }());
-    parent.adoptChild(newLayer);
-    assert(newLayer.attached == parent.attached);
-    if (parent.firstChild == this)
-      parent._firstChild = newLayer;
-    if (parent.lastChild == this)
-      parent._lastChild = newLayer;
-    _nextSibling = null;
-    _previousSibling = null;
-    parent.dropChild(this);
-    assert(!attached);
-  }
-
   /// Returns the value of [S] that corresponds to the point described by
   /// [regionOffset].
   ///
   /// Returns null if no matching region is found.
   ///
-  /// The main way for a value to be assigned here is by pushing an
+  /// The main way for a value to be found here is by pushing an
   /// [AnnotatedRegionLayer] into the layer tree.
   ///
   /// See also:
   ///
   ///  * [AnnotatedRegionLayer], for placing values in the layer tree.
   S find<S>(Offset regionOffset);
+
+  /// Returns an iterable of [S] values that corresponds to the point described
+  /// by [regionOffset] on all layers under the point.
+  ///
+  /// Returns an empty list if no matching region is found.
+  ///
+  /// The main way for a value to be found here is by pushing an
+  /// [AnnotatedRegionLayer] into the layer tree.
+  ///
+  /// See also:
+  ///
+  ///  * [AnnotatedRegionLayer], for placing values in the layer tree.
+  Iterable<S> findAll<S>(Offset regionOffset);
 
   /// Override this method to upload this layer to the engine.
   ///
@@ -290,6 +271,9 @@ class PictureLayer extends Layer {
 
   @override
   S find<S>(Offset regionOffset) => null;
+
+  @override
+  Iterable<S> findAll<S>(Offset regionOffset) => <S>[];
 }
 
 /// A composited layer that maps a backend texture to a rectangle.
@@ -314,9 +298,9 @@ class PictureLayer extends Layer {
 ///
 /// See also:
 ///
-///  * <https://docs.flutter.io/javadoc/io/flutter/view/TextureRegistry.html>
+///  * <https://api.flutter.dev/javadoc/io/flutter/view/TextureRegistry.html>
 ///    for how to create and manage backend textures on Android.
-///  * <https://docs.flutter.io/objcdoc/Protocols/FlutterTextureRegistry.html>
+///  * <https://api.flutter.dev/objcdoc/Protocols/FlutterTextureRegistry.html>
 ///    for how to create and manage backend textures on iOS.
 class TextureLayer extends Layer {
   /// Creates a texture layer bounded by [rect] and with backend texture
@@ -346,7 +330,7 @@ class TextureLayer extends Layer {
 
   @override
   ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
-    final Rect shiftedRect = rect.shift(layerOffset);
+    final Rect shiftedRect = layerOffset == Offset.zero ? rect : rect.shift(layerOffset);
     builder.addTexture(
       textureId,
       offset: shiftedRect.topLeft,
@@ -359,6 +343,9 @@ class TextureLayer extends Layer {
 
   @override
   S find<S>(Offset regionOffset) => null;
+
+  @override
+  Iterable<S> findAll<S>(Offset regionOffset) => <S>[];
 }
 
 /// A layer that shows an embedded [UIView](https://developer.apple.com/documentation/uikit/uiview)
@@ -383,7 +370,7 @@ class PlatformViewLayer extends Layer {
 
   @override
   ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
-    final Rect shiftedRect = rect.shift(layerOffset);
+    final Rect shiftedRect = layerOffset == Offset.zero ? rect : rect.shift(layerOffset);
     builder.addPlatformView(
       viewId,
       offset: shiftedRect.topLeft,
@@ -395,6 +382,9 @@ class PlatformViewLayer extends Layer {
 
   @override
   S find<S>(Offset regionOffset) => null;
+
+  @override
+  Iterable<S> findAll<S>(Offset regionOffset) => <S>[];
 }
 
 /// A layer that indicates to the compositor that it should display
@@ -459,7 +449,8 @@ class PerformanceOverlayLayer extends Layer {
   @override
   ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
     assert(optionsMask != null);
-    builder.addPerformanceOverlay(optionsMask, overlayRect.shift(layerOffset));
+    final Rect shiftedOverlayRect = layerOffset == Offset.zero ? overlayRect : overlayRect.shift(layerOffset);
+    builder.addPerformanceOverlay(optionsMask, shiftedOverlayRect);
     builder.setRasterizerTracingThreshold(rasterizerThreshold);
     builder.setCheckerboardRasterCacheImages(checkerboardRasterCacheImages);
     builder.setCheckerboardOffscreenLayers(checkerboardOffscreenLayers);
@@ -468,6 +459,9 @@ class PerformanceOverlayLayer extends Layer {
 
   @override
   S find<S>(Offset regionOffset) => null;
+
+  @override
+  Iterable<S> findAll<S>(Offset regionOffset) => <S>[];
 }
 
 /// A composited layer that has a list of children.
@@ -526,16 +520,16 @@ class ContainerLayer extends Layer {
   List<PictureLayer> _processConflictingPhysicalLayers(PhysicalModelLayer predecessor, PhysicalModelLayer child) {
     FlutterError.reportError(FlutterErrorDetails(
       exception: FlutterError('Painting order is out of order with respect to elevation.\n'
-                              'See https://api.flutter.dev/flutter/rendering/debugCheckElevations.html '
+                              'See https://api.flutter.dev/flutter/rendering/debugCheckElevationsEnabled.html '
                               'for more details.'),
       library: 'rendering library',
-      context: 'during compositing',
-      informationCollector: (StringBuffer buffer) {
-        buffer.writeln('Attempted to composite layer:');
-        buffer.writeln(child);
-        buffer.writeln('after layer:');
-        buffer.writeln(predecessor);
-        buffer.writeln('which occupies the same area at a higher elevation.');
+      context: ErrorDescription('during compositing'),
+      informationCollector: () {
+        return <DiagnosticsNode>[
+          child.toDiagnosticsNode(name: 'Attempted to composite layer', style: DiagnosticsTreeStyle.errorProperty),
+          predecessor.toDiagnosticsNode(name: 'after layer', style: DiagnosticsTreeStyle.errorProperty),
+          ErrorDescription('which occupies the same area at a higher elevation.'),
+        ];
       }
     ));
     return <PictureLayer>[
@@ -620,6 +614,21 @@ class ContainerLayer extends Layer {
       current = current.previousSibling;
     }
     return null;
+  }
+
+  @override
+  Iterable<S> findAll<S>(Offset regionOffset) {
+    Iterable<S> result = Iterable<S>.empty();
+    if (firstChild == null)
+      return result;
+    Layer child = lastChild;
+    while (true) {
+      result = result.followedBy(child.findAll<S>(regionOffset));
+      if (child == firstChild)
+        break;
+      child = child.previousSibling;
+    }
+    return result;
   }
 
   @override
@@ -847,6 +856,11 @@ class OffsetLayer extends ContainerLayer {
   }
 
   @override
+  Iterable<S> findAll<S>(Offset regionOffset) {
+    return super.findAll<S>(regionOffset - offset);
+  }
+
+  @override
   void applyTransform(Layer child, Matrix4 transform) {
     assert(child != null);
     assert(transform != null);
@@ -973,7 +987,7 @@ class ClipRectLayer extends ContainerLayer {
   }
 
   /// {@template flutter.clipper.clipBehavior}
-  /// Controls how to clip (default to [Clip.antiAlias]).
+  /// Controls how to clip (defaults to [Clip.hardEdge]).
   ///
   /// [Clip.none] is not allowed here.
   /// {@endtemplate}
@@ -996,14 +1010,23 @@ class ClipRectLayer extends ContainerLayer {
   }
 
   @override
+  Iterable<S> findAll<S>(Offset regionOffset) {
+    if (!clipRect.contains(regionOffset))
+      return Iterable<S>.empty();
+    return super.findAll<S>(regionOffset);
+  }
+
+  @override
   ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
     bool enabled = true;
     assert(() {
       enabled = !debugDisableClipLayers;
       return true;
     }());
-    if (enabled)
-      builder.pushClipRect(clipRect.shift(layerOffset), clipBehavior: clipBehavior);
+    if (enabled) {
+      final Rect shiftedClipRect = layerOffset == Offset.zero ? clipRect : clipRect.shift(layerOffset);
+      builder.pushClipRect(shiftedClipRect, clipBehavior: clipBehavior);
+    }
     addChildrenToScene(builder, layerOffset);
     if (enabled)
       builder.pop();
@@ -1068,14 +1091,23 @@ class ClipRRectLayer extends ContainerLayer {
   }
 
   @override
+  Iterable<S> findAll<S>(Offset regionOffset) {
+    if (!clipRRect.contains(regionOffset))
+      return Iterable<S>.empty();
+    return super.findAll<S>(regionOffset);
+  }
+
+  @override
   ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
     bool enabled = true;
     assert(() {
       enabled = !debugDisableClipLayers;
       return true;
     }());
-    if (enabled)
-      builder.pushClipRRect(clipRRect.shift(layerOffset), clipBehavior: clipBehavior);
+    if (enabled) {
+      final RRect shiftedClipRRect = layerOffset == Offset.zero ? clipRRect : clipRRect.shift(layerOffset);
+      builder.pushClipRRect(shiftedClipRRect, clipBehavior: clipBehavior);
+    }
     addChildrenToScene(builder, layerOffset);
     if (enabled)
       builder.pop();
@@ -1140,18 +1172,66 @@ class ClipPathLayer extends ContainerLayer {
   }
 
   @override
+  Iterable<S> findAll<S>(Offset regionOffset) {
+    if (!clipPath.contains(regionOffset))
+      return Iterable<S>.empty();
+    return super.findAll<S>(regionOffset);
+  }
+
+  @override
   ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
     bool enabled = true;
     assert(() {
       enabled = !debugDisableClipLayers;
       return true;
     }());
-    if (enabled)
-      builder.pushClipPath(clipPath.shift(layerOffset), clipBehavior: clipBehavior);
+    if (enabled) {
+      final Path shiftedPath = layerOffset == Offset.zero ? clipPath : clipPath.shift(layerOffset);
+      builder.pushClipPath(shiftedPath, clipBehavior: clipBehavior);
+    }
     addChildrenToScene(builder, layerOffset);
     if (enabled)
       builder.pop();
     return null; // this does not return an engine layer yet.
+  }
+}
+
+/// A composite layer that applies a [ColorFilter] to its children.
+class ColorFilterLayer extends ContainerLayer {
+  /// Creates a layer that applies a [ColorFilter] to its children.
+  ///
+  /// The [ColorFilter] property must be non-null before the compositing phase
+  /// of the pipeline.
+  ColorFilterLayer({
+    @required ColorFilter colorFilter,
+  }) : _colorFilter = colorFilter,
+       assert(colorFilter != null);
+
+  /// The color filter to apply to children.
+  ///
+  /// The scene must be explicitly recomposited after this property is changed
+  /// (as described at [Layer]).
+  ColorFilter get colorFilter => _colorFilter;
+  ColorFilter _colorFilter;
+  set colorFilter(ColorFilter value) {
+    if (value != _colorFilter) {
+      _colorFilter = value;
+      markNeedsAddToScene();
+    }
+  }
+
+  @override
+  ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
+    builder.pushColorFilter(colorFilter);
+    addChildrenToScene(builder, layerOffset);
+    builder.pop();
+    return null; // this does not return an engine layer yet.
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<ColorFilter>('colorFilter', colorFilter));
   }
 }
 
@@ -1166,7 +1246,8 @@ class TransformLayer extends OffsetLayer {
   /// The [transform] and [offset] properties must be non-null before the
   /// compositing phase of the pipeline.
   TransformLayer({ Matrix4 transform, Offset offset = Offset.zero })
-    : _transform = transform,
+    : assert(transform.storage.every((double value) => value.isFinite)),
+      _transform = transform,
       super(offset: offset);
 
   /// The matrix to apply.
@@ -1205,17 +1286,33 @@ class TransformLayer extends OffsetLayer {
     return null; // this does not return an engine layer yet.
   }
 
-  @override
-  S find<S>(Offset regionOffset) {
+  Offset _transformOffset(Offset regionOffset) {
     if (_inverseDirty) {
-      _invertedTransform = Matrix4.tryInvert(transform);
+      _invertedTransform = Matrix4.tryInvert(
+        PointerEvent.removePerspectiveTransform(transform)
+      );
       _inverseDirty = false;
     }
     if (_invertedTransform == null)
       return null;
     final Vector4 vector = Vector4(regionOffset.dx, regionOffset.dy, 0.0, 1.0);
     final Vector4 result = _invertedTransform.transform(vector);
-    return super.find<S>(Offset(result[0], result[1]));
+    return Offset(result[0], result[1]);
+  }
+
+  @override
+  S find<S>(Offset regionOffset) {
+    final Offset transformedOffset = _transformOffset(regionOffset);
+    return transformedOffset == null ? null : super.find<S>(transformedOffset);
+  }
+
+  @override
+  Iterable<S> findAll<S>(Offset regionOffset) {
+    final Offset transformedOffset = _transformOffset(regionOffset);
+    if (transformedOffset == null) {
+      return Iterable<S>.empty();
+    }
+    return super.findAll<S>(transformedOffset);
   }
 
   @override
@@ -1280,6 +1377,13 @@ class OpacityLayer extends ContainerLayer {
       _offset = value;
       markNeedsAddToScene();
     }
+  }
+
+  @override
+  void applyTransform(Layer child, Matrix4 transform) {
+    assert(child != null);
+    assert(transform != null);
+    transform.translate(offset.dx, offset.dy);
   }
 
   @override
@@ -1360,7 +1464,8 @@ class ShaderMaskLayer extends ContainerLayer {
 
   @override
   ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
-    builder.pushShaderMask(shader, maskRect.shift(layerOffset), blendMode);
+    final Rect shiftedMaskRect = layerOffset == Offset.zero ? maskRect : maskRect.shift(layerOffset);
+    builder.pushShaderMask(shader, shiftedMaskRect, blendMode);
     addChildrenToScene(builder, layerOffset);
     builder.pop();
     return null; // this does not return an engine layer yet.
@@ -1408,7 +1513,7 @@ class BackdropFilterLayer extends ContainerLayer {
 /// A composited layer that uses a physical model to producing lighting effects.
 ///
 /// For example, the layer casts a shadow according to its geometry and the
-/// relative position of lights and other physically modelled objects in the
+/// relative position of lights and other physically modeled objects in the
 /// scene.
 ///
 /// When debugging, setting [debugDisablePhysicalShapeLayers] to true will cause this
@@ -1463,6 +1568,7 @@ class PhysicalModelLayer extends ContainerLayer {
   Clip get clipBehavior => _clipBehavior;
   Clip _clipBehavior;
   set clipBehavior(Clip value) {
+    assert(value != null);
     if (value != _clipBehavior) {
       _clipBehavior = value;
       markNeedsAddToScene();
@@ -1519,6 +1625,13 @@ class PhysicalModelLayer extends ContainerLayer {
   }
 
   @override
+  Iterable<S> findAll<S>(Offset regionOffset) {
+    if (!clipPath.contains(regionOffset))
+      return Iterable<S>.empty();
+    return super.findAll<S>(regionOffset);
+  }
+
+  @override
   ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
     ui.EngineLayer engineLayer;
     bool enabled = true;
@@ -1528,7 +1641,7 @@ class PhysicalModelLayer extends ContainerLayer {
     }());
     if (enabled) {
       engineLayer = builder.pushPhysicalShape(
-        path: clipPath.shift(layerOffset),
+        path: layerOffset == Offset.zero ? clipPath : clipPath.shift(layerOffset),
         elevation: elevation,
         color: color,
         shadowColor: shadowColor,
@@ -1545,7 +1658,7 @@ class PhysicalModelLayer extends ContainerLayer {
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(DoubleProperty('elevation', elevation));
-    properties.add(DiagnosticsProperty<Color>('color', color));
+    properties.add(ColorProperty('color', color));
   }
 }
 
@@ -1629,9 +1742,10 @@ class LeaderLayer extends ContainerLayer {
   Offset _lastOffset;
 
   @override
-  S find<S>(Offset regionOffset) {
-    return super.find<S>(regionOffset - offset);
-  }
+  S find<S>(Offset regionOffset) => super.find<S>(regionOffset - offset);
+
+  @override
+  Iterable<S> findAll<S>(Offset regionOffset) => super.findAll<S>(regionOffset - offset);
 
   @override
   ui.EngineLayer addToScene(ui.SceneBuilder builder, [ Offset layerOffset = Offset.zero ]) {
@@ -1745,11 +1859,7 @@ class FollowerLayer extends ContainerLayer {
   Matrix4 _invertedTransform;
   bool _inverseDirty = true;
 
-  @override
-  S find<S>(Offset regionOffset) {
-    if (link.leader == null) {
-      return showWhenUnlinked ? super.find<S>(regionOffset - unlinkedOffset) : null;
-    }
+  Offset _transformOffset<S>(Offset regionOffset) {
     if (_inverseDirty) {
       _invertedTransform = Matrix4.tryInvert(getLastTransform());
       _inverseDirty = false;
@@ -1758,7 +1868,28 @@ class FollowerLayer extends ContainerLayer {
       return null;
     final Vector4 vector = Vector4(regionOffset.dx, regionOffset.dy, 0.0, 1.0);
     final Vector4 result = _invertedTransform.transform(vector);
-    return super.find<S>(Offset(result[0] - linkedOffset.dx, result[1] - linkedOffset.dy));
+    return Offset(result[0] - linkedOffset.dx, result[1] - linkedOffset.dy);
+  }
+
+  @override
+  S find<S>(Offset regionOffset) {
+    if (link.leader == null) {
+      return showWhenUnlinked ? super.find<S>(regionOffset - unlinkedOffset) : null;
+    }
+    final Offset transformedOffset = _transformOffset<S>(regionOffset);
+    return transformedOffset == null ? null : super.find<S>(transformedOffset);
+  }
+
+  @override
+  Iterable<S> findAll<S>(Offset regionOffset) {
+    if (link.leader == null) {
+      return showWhenUnlinked ? super.findAll<S>(regionOffset - unlinkedOffset) : <S>[];
+    }
+    final Offset transformedOffset = _transformOffset<S>(regionOffset);
+    if (transformedOffset == null) {
+      return <S>[];
+    }
+    return super.findAll<S>(transformedOffset);
   }
 
   /// The transform that was used during the last composition phase.
@@ -1943,7 +2074,21 @@ class AnnotatedRegionLayer<T> extends ContainerLayer {
       final S typedResult = untypedResult;
       return typedResult;
     }
-    return super.find<S>(regionOffset);
+    return null;
+  }
+
+  @override
+  Iterable<S> findAll<S>(Offset regionOffset) {
+    final Iterable<S> childResults = super.findAll<S>(regionOffset);
+    if (size != null && !(offset & size).contains(regionOffset)) {
+      return childResults;
+    }
+    if (T == S) {
+      final Object untypedResult = value;
+      final S typedResult = untypedResult;
+      return childResults.followedBy(<S>[typedResult]);
+    }
+    return childResults;
   }
 
   @override

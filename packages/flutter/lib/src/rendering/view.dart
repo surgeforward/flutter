@@ -84,7 +84,7 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
     markNeedsLayout();
   }
 
-  ui.Window _window;
+  final ui.Window _window;
 
   /// Whether Flutter should automatically compute the desired system UI.
   ///
@@ -168,7 +168,7 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
   /// normally be in physical (device) pixels.
   bool hitTest(HitTestResult result, { Offset position }) {
     if (child != null)
-      child.hitTest(result, position: position);
+      child.hitTest(BoxHitTestResult.wrap(result), position: position);
     result.add(HitTestEntry(this));
     return true;
   }

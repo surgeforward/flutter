@@ -618,9 +618,10 @@ class _CupertinoBackGestureController<T> {
     // or after mid screen, we should animate the page out. Otherwise, the page
     // should be animated back in.
     if (velocity.abs() >= _kMinFlingVelocity)
-      animateForward = velocity > 0 ? false : true;
+      animateForward = velocity <= 0;
     else
-      animateForward = controller.value > 0.5 ? true : false;
+      animateForward = controller.value > 0.5;
+
     if (animateForward) {
       // The closer the panel is to dismissing, the shorter the animation is.
       // We want to cap the animation time, but we want to use a linear curve
@@ -652,6 +653,8 @@ class _CupertinoBackGestureController<T> {
         controller.removeStatusListener(animationStatusCallback);
       };
       controller.addStatusListener(animationStatusCallback);
+    } else {
+      navigator.didStopUserGesture();
     }
   }
 }
@@ -881,7 +884,7 @@ Future<T> showCupertinoModalPopup<T>({
 }
 
 // The curve and initial scale values were mostly eyeballed from iOS, however
-// they reuse the same animation curve that was modelled after native page
+// they reuse the same animation curve that was modeled after native page
 // transitions.
 final Animatable<double> _dialogScaleTween = Tween<double>(begin: 1.3, end: 1.0)
   .chain(CurveTween(curve: Curves.linearToEaseOut));

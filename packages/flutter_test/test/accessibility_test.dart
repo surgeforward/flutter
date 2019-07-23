@@ -123,10 +123,10 @@ void main() {
       final Evaluation result = await textContrastGuideline.evaluate(tester);
       expect(result.passed, false);
       expect(result.reason,
-        'SemanticsNode#21(Rect.fromLTRB(300.0, 200.0, 500.0, 400.0), label: "this is a test",'
+        'SemanticsNode#3(Rect.fromLTRB(300.0, 200.0, 500.0, 400.0), label: "this is a test",'
         ' textDirection: ltr):\nExpected contrast ratio of at least '
         '4.5 but found 1.17 for a font size of 14.0. The '
-        'computed foreground color was: Color(0xfffafafa), The computed background color was:'
+        'computed light color was: Color(0xfffafafa), The computed dark color was:'
         ' Color(0xffffeb3b)\n'
         'See also: https://www.w3.org/TR/UNDERSTANDING-WCAG20/visual-audio-contrast-contrast.html');
       handle.dispose();
@@ -256,7 +256,7 @@ void main() {
       final Evaluation result = await androidTapTargetGuideline.evaluate(tester);
       expect(result.passed, false);
       expect(result.reason,
-        'SemanticsNode#41(Rect.fromLTRB(376.0, 276.5, 424.0, 323.5), actions: [tap]): expected tap '
+        'SemanticsNode#3(Rect.fromLTRB(376.0, 276.5, 424.0, 323.5), actions: [tap]): expected tap '
         'target size of at least Size(48.0, 48.0), but found Size(48.0, 47.0)\n'
         'See also: https://support.google.com/accessibility/android/answer/7101858?hl=en');
       handle.dispose();
