@@ -12,7 +12,7 @@ import '../convert.dart';
 import '../globals.dart';
 import '../ios/xcodeproj.dart';
 import '../project.dart';
-import '../reporting/usage.dart';
+import '../reporting/reporting.dart';
 
 import 'cocoapod_utils.dart';
 
@@ -54,7 +54,7 @@ Future<void> buildMacOS({
     '-derivedDataPath', flutterBuildDir.absolute.path,
     'OBJROOT=${fs.path.join(flutterBuildDir.absolute.path, 'Build', 'Intermediates.noindex')}',
     'SYMROOT=${fs.path.join(flutterBuildDir.absolute.path, 'Build', 'Products')}',
-  ], runInShell: true);
+  ]);
   final Status status = logger.startProgress(
     'Building macOS application...',
     timeout: null,
