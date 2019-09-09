@@ -70,6 +70,7 @@ class TestServiceExtensionsBinding extends BindingBase
   bool frameScheduled = false;
   @override
   void scheduleFrame() {
+    ensureFrameCallbacksRegistered();
     frameScheduled = true;
   }
   Future<void> doFrame() async {
@@ -126,7 +127,7 @@ void main() {
   final List<String> console = <String>[];
 
   setUpAll(() async {
-    binding = TestServiceExtensionsBinding();
+    binding = TestServiceExtensionsBinding()..scheduleFrame();
     expect(binding.frameScheduled, isTrue);
 
     // We need to test this service extension here because the result is true
@@ -140,7 +141,7 @@ void main() {
     firstFrameResult = await binding.testExtension('didSendFirstFrameRasterizedEvent', <String, String>{});
     expect(firstFrameResult, <String, String>{'enabled': 'false'});
 
-    await binding.doFrame(); // initial frame scheduled by creating the binding
+    await binding.doFrame();
 
     expect(binding.debugDidSendFirstFrameEvent, isTrue);
     firstFrameResult = await binding.testExtension('didSendFirstFrameEvent', <String, String>{});
@@ -433,7 +434,7 @@ void main() {
     bool completed;
 
     completed = false;
-    defaultBinaryMessenger.setMockMessageHandler('flutter/assets', (ByteData message) async {
+    ServicesBinding.instance.defaultBinaryMessenger.setMockMessageHandler('flutter/assets', (ByteData message) async {
       expect(utf8.decode(message.buffer.asUint8List()), 'test');
       completed = true;
       return ByteData(5); // 0x0000000000
@@ -452,7 +453,7 @@ void main() {
     data = await rootBundle.loadStructuredData<bool>('test', (String value) async { expect(value, '\x00\x00\x00\x00\x00'); return false; });
     expect(data, isFalse);
     expect(completed, isTrue);
-    defaultBinaryMessenger.setMockMessageHandler('flutter/assets', null);
+    ServicesBinding.instance.defaultBinaryMessenger.setMockMessageHandler('flutter/assets', null);
   });
 
   test('Service extensions - exit', () async {
