@@ -11,6 +11,7 @@ import 'dart:isolate';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:archive/archive.dart';
 import 'package:build/build.dart';
 import 'package:build_config/build_config.dart';
 import 'package:build_modules/build_modules.dart';
@@ -26,6 +27,7 @@ import 'package:build_web_compilers/build_web_compilers.dart';
 import 'package:build_web_compilers/builders.dart';
 import 'package:build_web_compilers/src/dev_compiler_bootstrap.dart';
 import 'package:crypto/crypto.dart';
+import 'package:glob/glob.dart';
 import 'package:path/path.dart' as path; // ignore: package_path_import
 import 'package:scratch_space/scratch_space.dart';
 import 'package:test_core/backend.dart';
@@ -56,8 +58,7 @@ const Set<String> skipPlatformCheckPackages = <String>{
   'video_player',
 };
 
-final DartPlatform flutterWebPlatform =
-    DartPlatform.register('flutter_web', <String>[
+final DartPlatform flutterWebPlatform = DartPlatform.register('flutter_web', <String>[
   'async',
   'collection',
   'convert',
@@ -146,9 +147,10 @@ final List<core.BuilderApplication> builders = <core.BuilderApplication>[
               platform: flutterWebPlatform,
               librariesPath: path.absolute(path.join(builderOptions.config['flutterWebSdk'], 'libraries.json')),
               kernelTargetName: 'ddc',
+              useIncrementalCompiler: true,
             ),
         (BuilderOptions builderOptions) => DevCompilerBuilder(
-              useIncrementalCompiler: false,
+              useIncrementalCompiler: true,
               platform: flutterWebPlatform,
               platformSdk: builderOptions.config['flutterWebSdk'],
               sdkKernelPath: path.url.join('kernel', 'flutter_ddc_sdk.dill'),
@@ -206,14 +208,14 @@ class FlutterWebTestEntrypointBuilder implements Builder {
 
   @override
   Map<String, List<String>> get buildExtensions => const <String, List<String>>{
-        '.dart': <String>[
-          ddcBootstrapExtension,
-          jsEntrypointExtension,
-          jsEntrypointSourceMapExtension,
-          jsEntrypointArchiveExtension,
-          digestsEntrypointExtension,
-        ],
-      };
+    '.dart': <String>[
+      ddcBootstrapExtension,
+      jsEntrypointExtension,
+      jsEntrypointSourceMapExtension,
+      jsEntrypointArchiveExtension,
+      digestsEntrypointExtension,
+    ],
+  };
 
   @override
   Future<void> build(BuildStep buildStep) async {
@@ -233,14 +235,14 @@ class FlutterWebEntrypointBuilder implements Builder {
 
   @override
   Map<String, List<String>> get buildExtensions => const <String, List<String>>{
-        '.dart': <String>[
-          ddcBootstrapExtension,
-          jsEntrypointExtension,
-          jsEntrypointSourceMapExtension,
-          jsEntrypointArchiveExtension,
-          digestsEntrypointExtension,
-        ],
-      };
+    '.dart': <String>[
+      ddcBootstrapExtension,
+      jsEntrypointExtension,
+      jsEntrypointSourceMapExtension,
+      jsEntrypointArchiveExtension,
+      digestsEntrypointExtension,
+    ],
+  };
 
   @override
   Future<void> build(BuildStep buildStep) async {
@@ -275,7 +277,7 @@ class FlutterWebTestBootstrapBuilder implements Builder {
         assetPath, contents, Runtime.builtIn.map((Runtime runtime) => runtime.name).toSet());
 
     if (metadata.testOn.evaluate(SuitePlatform(Runtime.chrome))) {
-    await buildStep.writeAsString(id.addExtension('.browser_test.dart'), '''
+      await buildStep.writeAsString(id.addExtension('.browser_test.dart'), '''
 import 'dart:ui' as ui;
 import 'dart:html';
 import 'dart:js';
@@ -461,8 +463,32 @@ Future<void> bootstrapDart2Js(BuildStep buildStep, String flutterWebSdk, bool pr
   final AssetId jsOutputId = dartEntrypointId.changeExtension(jsEntrypointExtension);
   final File jsOutputFile = scratchSpace.fileFor(jsOutputId);
   if (result.succeeded && jsOutputFile.existsSync()) {
-    log.info(result.output);
-    // Explicitly write out the original js file and sourcemap.
+    final String rootDir = path.dirname(jsOutputFile.path);
+    final String dartFile = path.basename(dartEntrypointId.path);
+    final Glob fileGlob = Glob('$dartFile.js*');
+    final Archive archive = Archive();
+    await for (FileSystemEntity jsFile in fileGlob.list(root: rootDir)) {
+      if (jsFile.path.endsWith(jsEntrypointExtension) ||
+          jsFile.path.endsWith(jsEntrypointSourceMapExtension)) {
+        // These are explicitly output, and are not part of the archive.
+        continue;
+      }
+      if (jsFile is File) {
+        final String fileName = path.relative(jsFile.path, from: rootDir);
+        final FileStat fileStats = jsFile.statSync();
+        archive.addFile(
+            ArchiveFile(fileName, fileStats.size, await jsFile.readAsBytes())
+              ..mode = fileStats.mode
+              ..lastModTime = fileStats.modified.millisecondsSinceEpoch);
+      }
+    }
+    if (archive.isNotEmpty) {
+      final AssetId archiveId = dartEntrypointId.changeExtension(jsEntrypointArchiveExtension);
+      await buildStep.writeAsBytes(archiveId, TarEncoder().encode(archive));
+    }
+
+    // Explicitly write out the original js file and sourcemap - we can't output
+    // these as part of the archive because they already have asset nodes.
     await scratchSpace.copyOutput(jsOutputId, buildStep);
     final AssetId jsSourceMapId =
         dartEntrypointId.changeExtension(jsEntrypointSourceMapExtension);
