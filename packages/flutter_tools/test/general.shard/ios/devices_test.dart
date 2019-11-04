@@ -68,6 +68,16 @@ void main() {
       Platform: () => macPlatform,
     });
 
+    testUsingContext('parses major version', () {
+      expect(IOSDevice('device-123', sdkVersion: '1.0.0').majorSdkVersion, 1);
+      expect(IOSDevice('device-123', sdkVersion: '13.1.1').majorSdkVersion, 13);
+      expect(IOSDevice('device-123', sdkVersion: '10').majorSdkVersion, 10);
+      expect(IOSDevice('device-123', sdkVersion: '0').majorSdkVersion, 0);
+      expect(IOSDevice('device-123', sdkVersion: 'bogus').majorSdkVersion, 0);
+    }, overrides: <Type, Generator>{
+      Platform: () => macPlatform,
+    });
+
     for (Platform platform in unsupportedPlatforms) {
       testUsingContext('throws UnsupportedError exception if instantiated on ${platform.operatingSystem}', () {
         expect(
@@ -390,6 +400,50 @@ void main() {
         FileSystem: () => mockFileSystem,
         Platform: () => macPlatform,
         ProcessManager: () => mockProcessManager,
+      });
+
+      testUsingContext(' succeeds with --cache-sksl', () async {
+        final IOSDevice device = IOSDevice('123');
+        device.setLogReader(mockApp, mockLogReader);
+        final Uri uri = Uri(
+          scheme: 'http',
+          host: '127.0.0.1',
+          port: 1234,
+          path: 'observatory',
+        );
+        when(mockMDnsObservatoryDiscovery.getObservatoryUri(any, any, any))
+            .thenAnswer((Invocation invocation) => Future<Uri>.value(uri));
+
+        List<String> args;
+        when(mockIosDeploy.runApp(
+          deviceId: anyNamed('deviceId'),
+          bundlePath: anyNamed('bundlePath'),
+          launchArguments: anyNamed('launchArguments'),
+        )).thenAnswer((Invocation inv) {
+          args = inv.namedArguments[const Symbol('launchArguments')];
+          return Future<int>.value(0);
+        });
+
+        final LaunchResult launchResult = await device.startApp(mockApp,
+          prebuiltApplication: true,
+          debuggingOptions: DebuggingOptions.enabled(
+              const BuildInfo(BuildMode.debug, null),
+              cacheSkSL: true,
+          ),
+          platformArgs: <String, dynamic>{},
+        );
+        expect(launchResult.started, isTrue);
+        expect(args, contains('--cache-sksl'));
+        expect(await device.stopApp(mockApp), isFalse);
+      }, overrides: <Type, Generator>{
+        Artifacts: () => mockArtifacts,
+        Cache: () => mockCache,
+        FileSystem: () => mockFileSystem,
+        MDnsObservatoryDiscovery: () => mockMDnsObservatoryDiscovery,
+        Platform: () => macPlatform,
+        ProcessManager: () => mockProcessManager,
+        Usage: () => mockUsage,
+        IOSDeploy: () => mockIosDeploy,
       });
 
       void testNonPrebuilt({
@@ -763,7 +817,7 @@ flutter:
     expect(IOSDevice('test').isSupportedForProject(flutterProject), true);
   }, overrides: <Type, Generator>{
     FileSystem: () => MemoryFileSystem(),
-    ProcessManager: () => FakeProcessManager(<FakeCommand>[]),
+    ProcessManager: () => FakeProcessManager.any(),
     Platform: () => macPlatform,
   });
   testUsingContext('IOSDevice.isSupportedForProject is true with editable host app', () async {
@@ -775,7 +829,7 @@ flutter:
     expect(IOSDevice('test').isSupportedForProject(flutterProject), true);
   }, overrides: <Type, Generator>{
     FileSystem: () => MemoryFileSystem(),
-    ProcessManager: () => FakeProcessManager(<FakeCommand>[]),
+    ProcessManager: () => FakeProcessManager.any(),
     Platform: () => macPlatform,
   });
 
@@ -787,7 +841,7 @@ flutter:
     expect(IOSDevice('test').isSupportedForProject(flutterProject), false);
   }, overrides: <Type, Generator>{
     FileSystem: () => MemoryFileSystem(),
-    ProcessManager: () => FakeProcessManager(<FakeCommand>[]),
+    ProcessManager: () => FakeProcessManager.any(),
     Platform: () => macPlatform,
   });
 }

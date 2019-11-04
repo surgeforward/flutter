@@ -10,7 +10,7 @@ import 'package:yaml/yaml.dart' as yaml;
 
 import '../android/android.dart' as android;
 import '../android/android_sdk.dart' as android_sdk;
-import '../android/gradle.dart' as gradle;
+import '../android/gradle_utils.dart' as gradle;
 import '../base/common.dart';
 import '../base/file_system.dart';
 import '../base/net.dart';
@@ -623,7 +623,7 @@ To edit platform code in an IDE see https://flutter.dev/developing-packages/#edi
       'description': projectDescription,
       'dartSdk': '$flutterRoot/bin/cache/dart-sdk',
       'androidX': androidX,
-      'useNewAndroidEmbedding': featureFlags.isNewAndroidEmbeddingEnabled,
+      'useAndroidEmbeddingV2': featureFlags.isAndroidEmbeddingV2Enabled,
       'androidMinApiLevel': android.minApiLevel,
       'androidSdkVersion': android_sdk.minimumAndroidSdkVersion,
       'androidFlutterJar': '$flutterRoot/bin/cache/artifacts/engine/android-arm/flutter.jar',

@@ -43,7 +43,6 @@ void main() {
       }
     });
 
-
     group('dart-flags option', () {
       setUpAll(() {
         when(mockDeviceManager.getDevices()).thenAnswer((Invocation invocation) {
@@ -231,6 +230,9 @@ class FakeDevice extends Fake implements Device {
 
   @override
   Future<TargetPlatform> get targetPlatform async => _targetPlatform;
+
+  @override
+  final PlatformType platformType = PlatformType.ios;
 
   @override
   Future<LaunchResult> startApp(

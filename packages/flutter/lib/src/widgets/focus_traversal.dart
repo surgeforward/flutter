@@ -9,7 +9,7 @@ import 'package:flutter/painting.dart';
 
 import 'actions.dart';
 import 'basic.dart';
-import 'binding.dart';
+import 'editable_text.dart';
 import 'focus_manager.dart';
 import 'framework.dart';
 
@@ -248,7 +248,11 @@ mixin DirectionalFocusTraversalPolicyMixin on FocusTraversalPolicy {
         }
       }
     });
-    return sorted.first;
+
+    if (sorted.isNotEmpty)
+      return sorted.first;
+
+    return null;
   }
 
   // Sorts nodes from left to right horizontally, and removes nodes that are
@@ -618,7 +622,7 @@ class ReadingOrderTraversalPolicy extends FocusTraversalPolicy with DirectionalF
     // If we still didn't find any candidate, use the current node as a
     // fallback.
     candidate ??= currentNode;
-    candidate ??= WidgetsBinding.instance.focusManager.rootScope;
+    candidate ??= FocusManager.instance.rootScope;
     return candidate;
   }
 
@@ -801,8 +805,8 @@ class _RequestFocusActionBase extends Action {
   FocusNode _previousFocus;
 
   @override
-  void invoke(FocusNode node, Intent tag) {
-    _previousFocus = WidgetsBinding.instance.focusManager.primaryFocus;
+  void invoke(FocusNode node, Intent intent) {
+    _previousFocus = primaryFocus;
     node.requestFocus();
   }
 
@@ -842,8 +846,8 @@ class RequestFocusAction extends _RequestFocusActionBase {
   static const LocalKey key = ValueKey<Type>(RequestFocusAction);
 
   @override
-  void invoke(FocusNode node, Intent tag) {
-    super.invoke(node, tag);
+  void invoke(FocusNode node, Intent intent) {
+    super.invoke(node, intent);
     node.requestFocus();
   }
 }
@@ -861,8 +865,8 @@ class NextFocusAction extends _RequestFocusActionBase {
   static const LocalKey key = ValueKey<Type>(NextFocusAction);
 
   @override
-  void invoke(FocusNode node, Intent tag) {
-    super.invoke(node, tag);
+  void invoke(FocusNode node, Intent intent) {
+    super.invoke(node, intent);
     node.nextFocus();
   }
 }
@@ -881,8 +885,8 @@ class PreviousFocusAction extends _RequestFocusActionBase {
   static const LocalKey key = ValueKey<Type>(PreviousFocusAction);
 
   @override
-  void invoke(FocusNode node, Intent tag) {
-    super.invoke(node, tag);
+  void invoke(FocusNode node, Intent intent) {
+    super.invoke(node, intent);
     node.previousFocus();
   }
 }
@@ -897,11 +901,19 @@ class PreviousFocusAction extends _RequestFocusActionBase {
 class DirectionalFocusIntent extends Intent {
   /// Creates a [DirectionalFocusIntent] with a fixed [key], and the given
   /// [direction].
-  const DirectionalFocusIntent(this.direction) : super(DirectionalFocusAction.key);
+  const DirectionalFocusIntent(this.direction, {this.ignoreTextFields = true})
+      : assert(ignoreTextFields != null), super(DirectionalFocusAction.key);
 
   /// The direction in which to look for the next focusable node when the
   /// associated [DirectionalFocusAction] is invoked.
   final TraversalDirection direction;
+
+  /// If true, then directional focus actions that occur within a text field
+  /// will not happen when the focus node which received the key is a text
+  /// field.
+  ///
+  /// Defaults to true.
+  final bool ignoreTextFields;
 }
 
 /// An [Action] that moves the focus to the focusable node in the given
@@ -922,9 +934,10 @@ class DirectionalFocusAction extends _RequestFocusActionBase {
   TraversalDirection direction;
 
   @override
-  void invoke(FocusNode node, DirectionalFocusIntent tag) {
-    super.invoke(node, tag);
-    final DirectionalFocusIntent args = tag;
-    node.focusInDirection(args.direction);
+  void invoke(FocusNode node, DirectionalFocusIntent intent) {
+    super.invoke(node, intent);
+    if (!intent.ignoreTextFields || node.context.widget is! EditableText) {
+      node.focusInDirection(intent.direction);
+    }
   }
 }
