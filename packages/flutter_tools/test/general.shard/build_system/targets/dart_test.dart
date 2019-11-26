@@ -118,7 +118,7 @@ flutter_tools:lib/''');
   }));
 
   test('kernel_snapshot handles null result from kernel compilation', () => testbed.run(() async {
-    final FakeKernelCompilerFactory fakeKernelCompilerFactory = kernelCompilerFactory;
+    final FakeKernelCompilerFactory fakeKernelCompilerFactory = kernelCompilerFactory as FakeKernelCompilerFactory;
     fakeKernelCompilerFactory.kernelCompiler = MockKernelCompiler();
     when(fakeKernelCompilerFactory.kernelCompiler.compile(
       sdkRoot: anyNamed('sdkRoot'),
@@ -204,6 +204,40 @@ flutter_tools:lib/''');
   }, overrides: <Type, Generator>{
     KernelCompilerFactory: () => MockKernelCompilerFactory(),
   }));
+
+  test('kernel_snapshot forces platform linking on debug for darwin target platforms', () => testbed.run(() async {
+    final MockKernelCompiler mockKernelCompiler = MockKernelCompiler();
+    when(kernelCompilerFactory.create(any)).thenAnswer((Invocation _) async {
+      return mockKernelCompiler;
+    });
+    when(mockKernelCompiler.compile(
+      sdkRoot: anyNamed('sdkRoot'),
+      aot: anyNamed('aot'),
+      buildMode: anyNamed('buildMode'),
+      trackWidgetCreation: anyNamed('trackWidgetCreation'),
+      targetModel: anyNamed('targetModel'),
+      outputFilePath: anyNamed('outputFilePath'),
+      depFilePath: anyNamed('depFilePath'),
+      packagesPath: anyNamed('packagesPath'),
+      mainPath: anyNamed('mainPath'),
+      extraFrontEndOptions: anyNamed('extraFrontEndOptions'),
+      fileSystemRoots: anyNamed('fileSystemRoots'),
+      fileSystemScheme: anyNamed('fileSystemScheme'),
+      linkPlatformKernelIn: true,
+      dartDefines: anyNamed('dartDefines'),
+    )).thenAnswer((Invocation _) async {
+      return const CompilerOutput('example', 0, <Uri>[]);
+    });
+
+    await const KernelSnapshot().build(androidEnvironment
+      ..defines[kTargetPlatform]  = 'darwin-x64'
+      ..defines[kBuildMode] = 'debug'
+      ..defines[kTrackWidgetCreation] = 'false'
+    );
+  }, overrides: <Type, Generator>{
+    KernelCompilerFactory: () => MockKernelCompilerFactory(),
+  }));
+
 
   test('kernel_snapshot does use track widget creation on debug builds', () => testbed.run(() async {
     final MockKernelCompiler mockKernelCompiler = MockKernelCompiler();
