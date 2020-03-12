@@ -7,10 +7,9 @@ import '../base/file_system.dart';
 import '../base/logger.dart';
 import '../base/process.dart';
 import '../build_info.dart';
-import '../globals.dart';
+import '../globals.dart' as globals;
 import '../ios/xcodeproj.dart';
 import '../project.dart';
-import '../reporting/reporting.dart';
 import 'cocoapod_utils.dart';
 
 /// Builds the macOS project through xcodebuild.
@@ -20,7 +19,13 @@ Future<void> buildMacOS({
   BuildInfo buildInfo,
   String targetOverride,
 }) async {
-  final Directory flutterBuildDir = fs.directory(getMacOSBuildDirectory());
+  if (!flutterProject.macos.xcodeWorkspace.existsSync()) {
+    throwToolExit('No macOS desktop project configured. '
+      'See https://flutter.dev/desktop#add-desktop-support-to-an-existing-flutter-project '
+      'to learn about adding macOS support to a project.');
+  }
+
+  final Directory flutterBuildDir = globals.fs.directory(getMacOSBuildDirectory());
   if (!flutterBuildDir.existsSync()) {
     flutterBuildDir.createSync(recursive: true);
   }
@@ -62,7 +67,7 @@ Future<void> buildMacOS({
 
   // Run the Xcode build.
   final Stopwatch sw = Stopwatch()..start();
-  final Status status = logger.startProgress(
+  final Status status = globals.logger.startProgress(
     'Building macOS application...',
     timeout: null,
   );
@@ -73,13 +78,13 @@ Future<void> buildMacOS({
       'xcrun',
       'xcodebuild',
       '-workspace', flutterProject.macos.xcodeWorkspace.path,
-      '-configuration', '$configuration',
+      '-configuration', configuration,
       '-scheme', 'Runner',
       '-derivedDataPath', flutterBuildDir.absolute.path,
-      'OBJROOT=${fs.path.join(flutterBuildDir.absolute.path, 'Build', 'Intermediates.noindex')}',
-      'SYMROOT=${fs.path.join(flutterBuildDir.absolute.path, 'Build', 'Products')}',
+      'OBJROOT=${globals.fs.path.join(flutterBuildDir.absolute.path, 'Build', 'Intermediates.noindex')}',
+      'SYMROOT=${globals.fs.path.join(flutterBuildDir.absolute.path, 'Build', 'Products')}',
       'COMPILER_INDEX_STORE_ENABLE=NO',
-      ...environmentVariablesAsXcodeBuildSettings()
+      ...environmentVariablesAsXcodeBuildSettings(globals.platform)
     ], trace: true);
   } finally {
     status.cancel();
@@ -87,5 +92,5 @@ Future<void> buildMacOS({
   if (result != 0) {
     throwToolExit('Build process failed');
   }
-  flutterUsage.sendTiming('build', 'xcode-macos', Duration(milliseconds: sw.elapsedMilliseconds));
+  globals.flutterUsage.sendTiming('build', 'xcode-macos', Duration(milliseconds: sw.elapsedMilliseconds));
 }

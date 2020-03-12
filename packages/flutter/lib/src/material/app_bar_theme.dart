@@ -27,7 +27,7 @@ import 'theme.dart';
 ///
 ///  * [ThemeData], which describes the overall theme information for the
 ///    application.
-class AppBarTheme extends Diagnosticable {
+class AppBarTheme with Diagnosticable {
   /// Creates a theme that can be used for [ThemeData.AppBarTheme].
   const AppBarTheme({
     this.brightness,
@@ -123,18 +123,18 @@ class AppBarTheme extends Diagnosticable {
   }
 
   @override
-  bool operator ==(dynamic other) {
+  bool operator ==(Object other) {
     if (identical(this, other))
       return true;
     if (other.runtimeType != runtimeType)
       return false;
-    final AppBarTheme typedOther = other;
-    return typedOther.brightness == brightness
-        && typedOther.color == color
-        && typedOther.elevation == elevation
-        && typedOther.iconTheme == iconTheme
-        && typedOther.actionsIconTheme == actionsIconTheme
-        && typedOther.textTheme == textTheme;
+    return other is AppBarTheme
+        && other.brightness == brightness
+        && other.color == color
+        && other.elevation == elevation
+        && other.iconTheme == iconTheme
+        && other.actionsIconTheme == actionsIconTheme
+        && other.textTheme == textTheme;
   }
 
   @override

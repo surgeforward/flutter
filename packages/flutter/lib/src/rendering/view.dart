@@ -139,9 +139,9 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
 
   Matrix4 _rootTransform;
 
-  Layer _updateMatricesAndCreateNewRootLayer() {
+  TransformLayer _updateMatricesAndCreateNewRootLayer() {
     _rootTransform = configuration.toMatrix();
-    final ContainerLayer rootLayer = TransformLayer(transform: _rootTransform);
+    final TransformLayer rootLayer = TransformLayer(transform: _rootTransform);
     rootLayer.attach(this);
     assert(_rootTransform != null);
     return rootLayer;
@@ -193,8 +193,8 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
   ///
   /// See also:
   ///
-  /// * [Layer.findAllAnnotations], which is used by this method to find all
-  ///   [AnnotatedRegionLayer]s annotated for mouse tracking.
+  ///  * [Layer.findAllAnnotations], which is used by this method to find all
+  ///    [AnnotatedRegionLayer]s annotated for mouse tracking.
   Iterable<MouseTrackerAnnotation> hitTestMouseTrackers(Offset position) {
     // Layer hit testing is done using device pixels, so we have to convert
     // the logical coordinates of the event location back to device pixels
@@ -255,7 +255,9 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
         break;
       case TargetPlatform.fuchsia:
       case TargetPlatform.iOS:
+      case TargetPlatform.linux:
       case TargetPlatform.macOS:
+      case TargetPlatform.windows:
         break;
     }
     // If there are no overlay styles in the UI don't bother updating.
@@ -282,7 +284,6 @@ class RenderView extends RenderObject with RenderObjectWithChildMixin<RenderBox>
   }
 
   @override
-  // ignore: MUST_CALL_SUPER
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     // call to ${super.debugFillProperties(description)} is omitted because the
     // root superclasses don't include any interesting information for this

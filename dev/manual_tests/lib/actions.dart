@@ -2,24 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-// Sets a platform override for desktop to avoid exceptions. See
-// https://flutter.dev/desktop#target-platform-override for more info.
-// TODO(gspencergoog): Remove once TargetPlatform includes all desktop platforms.
-void _enablePlatformOverrideForDesktop() {
-  if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
-    debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
-  }
-}
-
 void main() {
-  _enablePlatformOverrideForDesktop();
   runApp(const MaterialApp(
     title: 'Actions Demo',
     home: FocusDemo(),
@@ -77,7 +65,7 @@ class UndoableActionDispatcher extends ActionDispatcher implements Listenable {
   /// May only be called by subclasses.
   @protected
   void notifyListeners() {
-    for (VoidCallback callback in _listeners) {
+    for (final VoidCallback callback in _listeners) {
       callback();
     }
   }
@@ -166,7 +154,7 @@ class UndoIntent extends Intent {
 
   @override
   bool isEnabled(BuildContext context) {
-    final UndoableActionDispatcher manager = Actions.of(context, nullOk: true);
+    final UndoableActionDispatcher manager = Actions.of(context, nullOk: true) as UndoableActionDispatcher;
     return manager.canUndo;
   }
 }
@@ -176,7 +164,7 @@ class RedoIntent extends Intent {
 
   @override
   bool isEnabled(BuildContext context) {
-    final UndoableActionDispatcher manager = Actions.of(context, nullOk: true);
+    final UndoableActionDispatcher manager = Actions.of(context, nullOk: true) as UndoableActionDispatcher;
     return manager.canRedo;
   }
 }
@@ -189,7 +177,7 @@ final Action kUndoAction = CallbackAction(
     if (node?.context == null) {
       return;
     }
-    final UndoableActionDispatcher manager = Actions.of(node.context, nullOk: true);
+    final UndoableActionDispatcher manager = Actions.of(node.context, nullOk: true) as UndoableActionDispatcher;
     manager?.undo();
   },
 );
@@ -202,7 +190,7 @@ final Action kRedoAction = CallbackAction(
     if (node?.context == null) {
       return;
     }
-    final UndoableActionDispatcher manager = Actions.of(node.context, nullOk: true);
+    final UndoableActionDispatcher manager = Actions.of(node.context, nullOk: true) as UndoableActionDispatcher;
     manager?.redo();
   },
 );
@@ -435,7 +423,7 @@ class _FocusDemoState extends State<FocusDemo> {
         kUndoActionKey: () => kUndoAction,
         kRedoActionKey: () => kRedoAction,
       },
-      child: DefaultFocusTraversal(
+      child: FocusTraversalGroup(
         policy: ReadingOrderTraversalPolicy(),
         child: Shortcuts(
           shortcuts: <LogicalKeySet, Intent>{
@@ -446,7 +434,7 @@ class _FocusDemoState extends State<FocusDemo> {
             debugLabel: 'Scope',
             autofocus: true,
             child: DefaultTextStyle(
-              style: textTheme.display1,
+              style: textTheme.headline4,
               child: Scaffold(
                 appBar: AppBar(
                   title: const Text('Actions Demo'),

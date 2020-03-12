@@ -8,6 +8,7 @@ import '../base/common.dart';
 import '../base/os.dart';
 import '../cache.dart';
 import '../dart/pub.dart';
+import '../globals.dart' as globals;
 import '../project.dart';
 import '../reporting/reporting.dart';
 import '../runner/flutter_command.dart';
@@ -97,10 +98,11 @@ class PackagesGetCommand extends FlutterCommand {
         checkLastModified: false,
       );
       pubGetTimer.stop();
-      flutterUsage.sendTiming('pub', 'get', pubGetTimer.elapsed, label: 'success');
-    } catch (_) {
+      globals.flutterUsage.sendTiming('pub', 'get', pubGetTimer.elapsed, label: 'success');
+    // Not limiting to catching Exception because the exception is rethrown.
+    } catch (_) { // ignore: avoid_catches_without_on_clauses
       pubGetTimer.stop();
-      flutterUsage.sendTiming('pub', 'get', pubGetTimer.elapsed, label: 'failure');
+      globals.flutterUsage.sendTiming('pub', 'get', pubGetTimer.elapsed, label: 'failure');
       rethrow;
     }
   }
@@ -131,7 +133,7 @@ class PackagesGetCommand extends FlutterCommand {
       await exampleProject.ensureReadyForPlatformSpecificTooling(checkProjects: true);
     }
 
-    return null;
+    return FlutterCommandResult.success();
   }
 }
 
@@ -162,7 +164,7 @@ class PackagesTestCommand extends FlutterCommand {
   Future<FlutterCommandResult> runCommand() async {
     Cache.releaseLockEarly();
     await pub.batch(<String>['run', 'test', ...argResults.rest], context: PubContext.runTest, retry: false);
-    return null;
+    return FlutterCommandResult.success();
   }
 }
 
@@ -203,7 +205,7 @@ class PackagesPublishCommand extends FlutterCommand {
     ];
     Cache.releaseLockEarly();
     await pub.interactively(<String>['publish', ...args]);
-    return null;
+    return FlutterCommandResult.success();
   }
 }
 
@@ -234,7 +236,7 @@ class PackagesForwardCommand extends FlutterCommand {
   Future<FlutterCommandResult> runCommand() async {
     Cache.releaseLockEarly();
     await pub.interactively(<String>[_commandName, ...argResults.rest]);
-    return null;
+    return FlutterCommandResult.success();
   }
 
 }
@@ -262,6 +264,6 @@ class PackagesPassthroughCommand extends FlutterCommand {
   Future<FlutterCommandResult> runCommand() async {
     Cache.releaseLockEarly();
     await pub.interactively(argResults.rest);
-    return null;
+    return FlutterCommandResult.success();
   }
 }

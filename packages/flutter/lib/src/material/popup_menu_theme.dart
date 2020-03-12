@@ -29,7 +29,7 @@ import 'theme.dart';
 ///
 ///  * [ThemeData], which describes the overall theme information for the
 ///    application.
-class PopupMenuThemeData extends Diagnosticable {
+class PopupMenuThemeData with Diagnosticable {
   /// Creates the set of properties used to configure [PopupMenuTheme].
   const PopupMenuThemeData({
     this.color,
@@ -99,11 +99,11 @@ class PopupMenuThemeData extends Diagnosticable {
       return true;
     if (other.runtimeType != runtimeType)
       return false;
-    final PopupMenuThemeData typedOther = other;
-    return typedOther.elevation == elevation
-        && typedOther.color == color
-        && typedOther.shape == shape
-        && typedOther.textStyle == textStyle;
+    return other is PopupMenuThemeData
+        && other.elevation == elevation
+        && other.color == color
+        && other.shape == shape
+        && other.textStyle == textStyle;
   }
 
   @override

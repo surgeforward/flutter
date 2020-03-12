@@ -24,7 +24,7 @@ import 'package:flutter/rendering.dart';
 ///
 ///  * [ThemeData], which describes the overall theme information for the
 ///    application.
-class BottomSheetThemeData extends Diagnosticable {
+class BottomSheetThemeData with Diagnosticable {
   /// Creates a theme that can be used for [ThemeData.bottomSheetTheme].
   const BottomSheetThemeData({
     this.backgroundColor,
@@ -123,13 +123,13 @@ class BottomSheetThemeData extends Diagnosticable {
       return true;
     if (other.runtimeType != runtimeType)
       return false;
-    final BottomSheetThemeData typedOther = other;
-    return typedOther.backgroundColor == backgroundColor
-        && typedOther.elevation == elevation
-        && typedOther.modalBackgroundColor == modalBackgroundColor
-        && typedOther.modalElevation == modalElevation
-        && typedOther.shape == shape
-        && typedOther.clipBehavior == clipBehavior;
+    return other is BottomSheetThemeData
+        && other.backgroundColor == backgroundColor
+        && other.elevation == elevation
+        && other.modalBackgroundColor == modalBackgroundColor
+        && other.modalElevation == modalElevation
+        && other.shape == shape
+        && other.clipBehavior == clipBehavior;
   }
 
   @override

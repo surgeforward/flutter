@@ -7,9 +7,11 @@ import 'dart:convert';
 import 'package:collection/collection.dart' show ListEquality;
 import 'package:flutter_tools/src/base/context.dart';
 import 'package:flutter_tools/src/base/io.dart';
+import 'package:flutter_tools/src/base/process.dart';
 import 'package:flutter_tools/src/base/time.dart';
 import 'package:flutter_tools/src/base/utils.dart';
 import 'package:flutter_tools/src/cache.dart';
+import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:flutter_tools/src/version.dart';
 import 'package:mockito/mockito.dart';
 import 'package:process/process.dart';
@@ -30,7 +32,7 @@ void main() {
     mockCache = MockCache();
   });
 
-  for (String channel in FlutterVersion.officialChannels) {
+  for (final String channel in FlutterVersion.officialChannels) {
     DateTime getChannelUpToDateVersion() {
       return _testClock.ago(FlutterVersion.versionAgeConsideredUpToDate(channel) ~/ 2);
     }
@@ -56,7 +58,7 @@ void main() {
           expectSetStamp: true,
           channel: channel,
         );
-        await FlutterVersion.instance.checkFlutterVersionFreshness();
+        await globals.flutterVersion.checkFlutterVersionFreshness();
         _expectVersionMessage('');
       }, overrides: <Type, Generator>{
         FlutterVersion: () => FlutterVersion(_testClock),
@@ -78,7 +80,7 @@ void main() {
           expectServerPing: true,
           channel: channel,
         );
-        final FlutterVersion version = FlutterVersion.instance;
+        final FlutterVersion version = globals.flutterVersion;
 
         await version.checkFlutterVersionFreshness();
         _expectVersionMessage('');
@@ -101,7 +103,7 @@ void main() {
           channel: channel,
         );
 
-        final FlutterVersion version = FlutterVersion.instance;
+        final FlutterVersion version = globals.flutterVersion;
         await version.checkFlutterVersionFreshness();
         _expectVersionMessage(FlutterVersion.newVersionAvailableMessage());
       }, overrides: <Type, Generator>{
@@ -123,7 +125,7 @@ void main() {
           channel: channel,
         );
 
-        final FlutterVersion version = FlutterVersion.instance;
+        final FlutterVersion version = globals.flutterVersion;
         await version.checkFlutterVersionFreshness();
         _expectVersionMessage(FlutterVersion.newVersionAvailableMessage());
         expect((await VersionCheckStamp.load()).lastTimeWarningWasPrinted, _testClock.now());
@@ -146,7 +148,7 @@ void main() {
           expectServerPing: true,
           channel: channel,
         );
-        final FlutterVersion version = FlutterVersion.instance;
+        final FlutterVersion version = globals.flutterVersion;
 
         await version.checkFlutterVersionFreshness();
         _expectVersionMessage(FlutterVersion.newVersionAvailableMessage());
@@ -181,7 +183,7 @@ void main() {
           expectServerPing: true,
           channel: channel,
         );
-        final FlutterVersion version = FlutterVersion.instance;
+        final FlutterVersion version = globals.flutterVersion;
 
         await version.checkFlutterVersionFreshness();
         _expectVersionMessage(FlutterVersion.newVersionAvailableMessage());
@@ -201,7 +203,7 @@ void main() {
           expectSetStamp: true,
           channel: channel,
         );
-        final FlutterVersion version = FlutterVersion.instance;
+        final FlutterVersion version = globals.flutterVersion;
 
         await version.checkFlutterVersionFreshness();
         _expectVersionMessage('');
@@ -221,7 +223,7 @@ void main() {
           expectSetStamp: true,
           channel: channel,
         );
-        final FlutterVersion version = FlutterVersion.instance;
+        final FlutterVersion version = globals.flutterVersion;
 
         await version.checkFlutterVersionFreshness();
         _expectVersionMessage(FlutterVersion.versionOutOfDateMessage(_testClock.now().difference(getChannelOutOfDateVersion())));
@@ -241,7 +243,7 @@ void main() {
           expectSetStamp: true,
           channel: channel,
         );
-        final FlutterVersion version = FlutterVersion.instance;
+        final FlutterVersion version = globals.flutterVersion;
 
         when(mockProcessManager.runSync(
           <String>['git', 'merge-base', '--is-ancestor', 'abcdef', '123456'],
@@ -410,6 +412,60 @@ void main() {
       'Could not interpret results of "git describe": v1.2.3-4-gxabcdef\n',
     );
   });
+
+  testUsingContext('determine does not call fetch --tags', () {
+    final MockProcessUtils processUtils = MockProcessUtils();
+    when(processUtils.runSync(
+      <String>['git', 'fetch', 'https://github.com/flutter/flutter.git', '--tags'],
+      workingDirectory: anyNamed('workingDirectory'),
+      environment: anyNamed('environment'),
+    )).thenReturn(RunResult(ProcessResult(105, 0, '', ''), <String>['git', 'fetch']));
+    when(processUtils.runSync(
+      <String>['git', 'describe', '--match', 'v*.*.*', '--first-parent', '--long', '--tags'],
+      workingDirectory: anyNamed('workingDirectory'),
+      environment: anyNamed('environment'),
+    )).thenReturn(RunResult(ProcessResult(106, 0, 'v0.1.2-3-1234abcd', ''), <String>['git', 'describe']));
+
+    GitTagVersion.determine(processUtils, workingDirectory: '.');
+
+    verifyNever(processUtils.runSync(
+      <String>['git', 'fetch', 'https://github.com/flutter/flutter.git', '--tags'],
+      workingDirectory: anyNamed('workingDirectory'),
+      environment: anyNamed('environment'),
+    ));
+    verify(processUtils.runSync(
+      <String>['git', 'describe', '--match', 'v*.*.*', '--first-parent', '--long', '--tags'],
+      workingDirectory: anyNamed('workingDirectory'),
+      environment: anyNamed('environment'),
+    )).called(1);
+  });
+
+  testUsingContext('determine calls fetch --tags', () {
+    final MockProcessUtils processUtils = MockProcessUtils();
+    when(processUtils.runSync(
+      <String>['git', 'fetch', 'https://github.com/flutter/flutter.git', '--tags'],
+      workingDirectory: anyNamed('workingDirectory'),
+      environment: anyNamed('environment'),
+    )).thenReturn(RunResult(ProcessResult(105, 0, '', ''), <String>['git', 'fetch']));
+    when(processUtils.runSync(
+      <String>['git', 'describe', '--match', 'v*.*.*', '--first-parent', '--long', '--tags'],
+      workingDirectory: anyNamed('workingDirectory'),
+      environment: anyNamed('environment'),
+    )).thenReturn(RunResult(ProcessResult(106, 0, 'v0.1.2-3-1234abcd', ''), <String>['git', 'describe']));
+
+    GitTagVersion.determine(processUtils, workingDirectory: '.', fetchTags: true);
+
+    verify(processUtils.runSync(
+      <String>['git', 'fetch', 'https://github.com/flutter/flutter.git', '--tags'],
+      workingDirectory: anyNamed('workingDirectory'),
+      environment: anyNamed('environment'),
+    )).called(1);
+    verify(processUtils.runSync(
+      <String>['git', 'describe', '--match', 'v*.*.*', '--first-parent', '--long', '--tags'],
+      workingDirectory: anyNamed('workingDirectory'),
+      environment: anyNamed('environment'),
+    )).called(1);
+  });
 }
 
 void _expectVersionMessage(String message) {
@@ -488,6 +544,8 @@ void fakeData(
     // Careful here!  argsAre accepts 9 arguments and FlutterVersion.gitLog adds 4.
     } else if (remoteCommitDate != null && listArgsAre(FlutterVersion.gitLog(<String>['__flutter_version_check__/$channel', '-n', '1', '--pretty=format:%ad', '--date=iso']))) {
       return success(remoteCommitDate.toString());
+    } else if (argsAre('git', 'fetch', 'https://github.com/flutter/flutter.git', '--tags')) {
+      return success('');
     }
 
     throw StateError('Unexpected call to ProcessManager.run(${invocation.positionalArguments}, ${invocation.namedArguments})');
@@ -519,12 +577,17 @@ void fakeData(
     environment: anyNamed('environment'),
   )).thenReturn(ProcessResult(104, 0, '1 second ago', ''));
   when(pm.runSync(
+    <String>['git', 'fetch', 'https://github.com/flutter/flutter', '--tags'],
+    workingDirectory: anyNamed('workingDirectory'),
+    environment: anyNamed('environment'),
+  )).thenReturn(ProcessResult(105, 0, '', ''));
+  when(pm.runSync(
     <String>['git', 'describe', '--match', 'v*.*.*', '--first-parent', '--long', '--tags'],
     workingDirectory: anyNamed('workingDirectory'),
     environment: anyNamed('environment'),
-  )).thenReturn(ProcessResult(105, 0, 'v0.1.2-3-1234abcd', ''));
+  )).thenReturn(ProcessResult(106, 0, 'v0.1.2-3-1234abcd', ''));
 }
 
 class MockProcessManager extends Mock implements ProcessManager {}
-
+class MockProcessUtils extends Mock implements ProcessUtils {}
 class MockCache extends Mock implements Cache {}

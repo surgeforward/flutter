@@ -27,7 +27,7 @@ class ColorFiltered extends SingleChildRenderObjectWidget {
 
   @override
   void updateRenderObject(BuildContext context, _ColorFilterRenderObject renderObject) {
-    renderObject..colorFilter = colorFilter;
+    renderObject.colorFilter = colorFilter;
   }
 
   @override
@@ -55,6 +55,6 @@ class _ColorFilterRenderObject extends RenderProxyBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    layer = context.pushColorFilter(offset, colorFilter, super.paint, oldLayer: layer);
+    layer = context.pushColorFilter(offset, colorFilter, super.paint, oldLayer: layer as ColorFilterLayer);
   }
 }

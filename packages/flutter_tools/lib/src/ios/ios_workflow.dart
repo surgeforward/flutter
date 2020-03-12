@@ -3,26 +3,26 @@
 // found in the LICENSE file.
 
 import '../base/context.dart';
-import '../base/platform.dart';
 import '../doctor.dart';
-import '../macos/xcode.dart';
+import '../globals.dart' as globals;
 
+// TODO(fujino): remove once internal references replaced by `globals.iosWorkflow`
 IOSWorkflow get iosWorkflow => context.get<IOSWorkflow>();
 
 class IOSWorkflow implements Workflow {
   const IOSWorkflow();
 
   @override
-  bool get appliesToHostPlatform => platform.isMacOS;
+  bool get appliesToHostPlatform => globals.platform.isMacOS;
 
   // We need xcode (+simctl) to list simulator devices, and libimobiledevice to list real devices.
   @override
-  bool get canListDevices => xcode.isInstalledAndMeetsVersionCheck && xcode.isSimctlInstalled;
+  bool get canListDevices => globals.xcode.isInstalledAndMeetsVersionCheck && globals.xcode.isSimctlInstalled;
 
   // We need xcode to launch simulator devices, and ideviceinstaller and ios-deploy
   // for real devices.
   @override
-  bool get canLaunchDevices => xcode.isInstalledAndMeetsVersionCheck;
+  bool get canLaunchDevices => globals.xcode.isInstalledAndMeetsVersionCheck;
 
   @override
   bool get canListEmulators => false;

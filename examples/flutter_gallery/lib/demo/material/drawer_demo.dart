@@ -62,6 +62,8 @@ class _DrawerDemoState extends State<DrawerDemo> with TickerProviderStateMixin {
     switch (Theme.of(context).platform) {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
         return Icons.arrow_back;
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
@@ -234,7 +236,7 @@ class _DrawerDemoState extends State<DrawerDemo> with TickerProviderStateMixin {
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text('Tap here to open the drawer',
-                    style: Theme.of(context).textTheme.subhead,
+                    style: Theme.of(context).textTheme.subtitle1,
                   ),
                 ),
               ],

@@ -219,8 +219,7 @@ class _SwitchState extends State<Switch> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _actionMap = <LocalKey, ActionFactory>{
-      SelectAction.key: _createAction,
-      if (!kIsWeb) ActivateAction.key: _createAction,
+      ActivateAction.key: _createAction,
     };
   }
 
@@ -234,7 +233,7 @@ class _SwitchState extends State<Switch> with TickerProviderStateMixin {
 
   Action _createAction() {
     return CallbackAction(
-      SelectAction.key,
+      ActivateAction.key,
       onInvoke: _actionHandler,
     );
   }
@@ -335,6 +334,7 @@ class _SwitchState extends State<Switch> with TickerProviderStateMixin {
           value: widget.value,
           onChanged: widget.onChanged,
           activeColor: widget.activeColor,
+          trackColor: widget.inactiveTrackColor
         ),
       ),
     );
@@ -352,6 +352,8 @@ class _SwitchState extends State<Switch> with TickerProviderStateMixin {
         switch (theme.platform) {
           case TargetPlatform.android:
           case TargetPlatform.fuchsia:
+          case TargetPlatform.linux:
+          case TargetPlatform.windows:
             return buildMaterialSwitch(context);
           case TargetPlatform.iOS:
           case TargetPlatform.macOS:

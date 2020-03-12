@@ -10,6 +10,7 @@ import 'package:flutter_tools/src/base/common.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/base/utils.dart';
+import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:meta/meta.dart';
 import 'package:process/process.dart';
 import 'package:vm_service/vm_service.dart';
@@ -83,7 +84,7 @@ abstract class FlutterTestDriver {
     bool withDebugger = false,
     File pidFile,
   }) async {
-    final String flutterBin = fs.path.join(getFlutterRoot(), 'bin', 'flutter');
+    final String flutterBin = globals.fs.path.join(getFlutterRoot(), 'bin', 'flutter');
     if (withDebugger) {
       arguments.add('--start-paused');
     }
@@ -318,7 +319,7 @@ abstract class FlutterTestDriver {
   }
 
   SourcePosition _lookupTokenPos(List<List<int>> table, int tokenPos) {
-    for (List<int> row in table) {
+    for (final List<int> row in table) {
       final int lineNumber = row[0];
       int index = 1;
 
@@ -497,7 +498,7 @@ class FlutterRunTestDriver extends FlutterTestDriver {
     // fast.
     unawaited(_process.exitCode.then((_) {
       if (!prematureExitGuard.isCompleted) {
-        prematureExitGuard.completeError('Process existed prematurely: ${args.join(' ')}');
+        prematureExitGuard.completeError('Process exited prematurely: ${args.join(' ')}: $_errorBuffer');
       }
     }));
 
@@ -527,7 +528,7 @@ class FlutterRunTestDriver extends FlutterTestDriver {
         // have already completed.
         _currentRunningAppId = (await started)['params']['appId'] as String;
         prematureExitGuard.complete();
-      } catch (error, stackTrace) {
+      } on Exception catch (error, stackTrace) {
         prematureExitGuard.completeError(error, stackTrace);
       }
     }());
@@ -537,6 +538,29 @@ class FlutterRunTestDriver extends FlutterTestDriver {
 
   Future<void> hotRestart({ bool pause = false }) => _restart(fullRestart: true, pause: pause);
   Future<void> hotReload() => _restart(fullRestart: false);
+
+  Future<void> scheduleFrame() async {
+    if (_currentRunningAppId == null) {
+      throw Exception('App has not started yet');
+    }
+    await _sendRequest(
+      'app.callServiceExtension',
+      <String, dynamic>{'appId': _currentRunningAppId, 'methodName': 'ext.ui.window.scheduleFrame'},
+    );
+  }
+
+  Future<void> reloadMethod({ String libraryId, String classId }) async {
+    if (_currentRunningAppId == null) {
+      throw Exception('App has not started yet');
+    }
+    final dynamic reloadMethodResponse = await _sendRequest(
+      'app.reloadMethod',
+      <String, dynamic>{'appId': _currentRunningAppId, 'class': classId, 'library': libraryId},
+    );
+    if (reloadMethodResponse == null || reloadMethodResponse['code'] != 0) {
+      _throwErrorResponse('reloadMethodResponse request failed');
+    }
+  }
 
   Future<void> _restart({ bool fullRestart = false, bool pause = false }) async {
     if (_currentRunningAppId == null) {
@@ -655,8 +679,6 @@ class FlutterTestTestDriver extends FlutterTestDriver {
       'test',
       '--disable-service-auth-codes',
       '--machine',
-      '-d',
-      'flutter-tester',
     ], script: testFile, withDebugger: withDebugger, pauseOnExceptions: pauseOnExceptions, pidFile: pidFile, beforeStart: beforeStart);
   }
 
@@ -710,9 +732,32 @@ class FlutterTestTestDriver extends FlutterTestDriver {
   Map<String, dynamic> _parseJsonResponse(String line) {
     try {
       return castStringKeyedMap(json.decode(line));
-    } catch (e) {
+    } on Exception {
       // Not valid JSON, so likely some other output.
       return null;
+    }
+  }
+
+  Future<void> waitForCompletion() async {
+    final Completer<bool> done = Completer<bool>();
+    // Waiting for `{"success":true,"type":"done",...}` line indicating
+    // end of test run.
+    final StreamSubscription<String> subscription = _stdout.stream.listen(
+        (String line) async {
+          final Map<String, dynamic> json = _parseJsonResponse(line);
+          if (json != null && json['type'] != null && json['success'] != null) {
+            done.complete(json['type'] == 'done' && json['success'] == true);
+          }
+        });
+
+    await resume();
+
+    final Future<dynamic> timeoutFuture =
+        Future<dynamic>.delayed(defaultTimeout);
+    await Future.any<dynamic>(<Future<dynamic>>[done.future, timeoutFuture]);
+    await subscription.cancel();
+    if (!done.isCompleted) {
+      await quit();
     }
   }
 }
@@ -726,7 +771,7 @@ Map<String, dynamic> parseFlutterResponse(String line) {
     try {
       final Map<String, dynamic> response = castStringKeyedMap(json.decode(line)[0]);
       return response;
-    } catch (e) {
+    } on Exception {
       // Not valid JSON, so likely some other output that was surrounded by [brackets]
       return null;
     }

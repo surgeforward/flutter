@@ -67,11 +67,6 @@ class MaterialPageRoute<T> extends PageRoute<T> {
   String get barrierLabel => null;
 
   @override
-  bool canTransitionFrom(TransitionRoute<dynamic> previousRoute) {
-    return previousRoute is MaterialPageRoute || previousRoute is CupertinoPageRoute;
-  }
-
-  @override
   bool canTransitionTo(TransitionRoute<dynamic> nextRoute) {
     // Don't perform outgoing animation if the next route is a fullscreen dialog.
     return (nextRoute is MaterialPageRoute && !nextRoute.fullscreenDialog)
@@ -87,10 +82,10 @@ class MaterialPageRoute<T> extends PageRoute<T> {
     final Widget result = builder(context);
     assert(() {
       if (result == null) {
-        throw FlutterError.fromParts(<DiagnosticsNode>[
-          ErrorSummary('The builder for route "${settings.name}" returned null.'),
-          ErrorDescription('Route builders must never return null.')
-        ]);
+        throw FlutterError(
+          'The builder for route "${settings.name}" returned null.\n'
+          'Route builders must never return null.'
+        );
       }
       return true;
     }());

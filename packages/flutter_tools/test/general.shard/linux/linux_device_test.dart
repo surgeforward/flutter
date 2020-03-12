@@ -4,13 +4,16 @@
 
 import 'package:file/memory.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
-import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/build_info.dart';
+import 'package:flutter_tools/src/features.dart';
 import 'package:flutter_tools/src/linux/application_package.dart';
 import 'package:flutter_tools/src/linux/linux_device.dart';
 import 'package:flutter_tools/src/device.dart';
 import 'package:flutter_tools/src/project.dart';
+import 'package:flutter_tools/src/globals.dart' as globals;
+
 import 'package:mockito/mockito.dart';
+import 'package:platform/platform.dart';
 
 import '../../src/common.dart';
 import '../../src/context.dart';
@@ -34,15 +37,16 @@ void main() {
   });
 
   testUsingContext('LinuxDevice: no devices listed if platform unsupported', () async {
-    expect(await LinuxDevices().devices, <Device>[]);
-  }, overrides: <Type, Generator>{
-    Platform: () => notLinux,
+    expect(await LinuxDevices(
+      platform: notLinux,
+      featureFlags: featureFlags,
+    ).devices, <Device>[]);
   });
 
   testUsingContext('LinuxDevice.isSupportedForProject is true with editable host app', () async {
-    fs.file('pubspec.yaml').createSync();
-    fs.file('.packages').createSync();
-    fs.directory('linux').createSync();
+    globals.fs.file('pubspec.yaml').createSync();
+    globals.fs.file('.packages').createSync();
+    globals.fs.directory('linux').createSync();
     final FlutterProject flutterProject = FlutterProject.current();
 
     expect(LinuxDevice().isSupportedForProject(flutterProject), true);
@@ -52,8 +56,8 @@ void main() {
   });
 
   testUsingContext('LinuxDevice.isSupportedForProject is false with no host app', () async {
-    fs.file('pubspec.yaml').createSync();
-    fs.file('.packages').createSync();
+    globals.fs.file('pubspec.yaml').createSync();
+    globals.fs.file('.packages').createSync();
     final FlutterProject flutterProject = FlutterProject.current();
 
     expect(LinuxDevice().isSupportedForProject(flutterProject), false);

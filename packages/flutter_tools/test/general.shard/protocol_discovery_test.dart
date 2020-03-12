@@ -112,6 +112,14 @@ void main() {
         expect(discoverer.uri, throwsA(isFormatException));
       });
 
+      testUsingContext('uri is null when the log reader closes early', () async {
+        initialize();
+        final Future<Uri> uriFuture = discoverer.uri;
+        await logReader.dispose();
+
+        expect(await uriFuture, isNull);
+      });
+
       testUsingContext('uri waits for correct log line', () async {
         initialize();
         final Future<Uri> uriFuture = discoverer.uri;
@@ -381,4 +389,7 @@ class MockPortForwarder extends DevicePortForwarder {
   Future<void> unforward(ForwardedPort forwardedPort) {
     throw 'not implemented';
   }
+
+  @override
+  Future<void> dispose() async {}
 }
