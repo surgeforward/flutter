@@ -145,9 +145,15 @@ class _DropdownMenuItemButtonState<T> extends State<_DropdownMenuItemButton<T>> 
   }
 
   void _handleOnTap() {
+    final DropdownMenuItem<T> dropdownMenuItem = widget.route.items[widget.itemIndex].item;
+
+    if (dropdownMenuItem.onTap != null) {
+      dropdownMenuItem.onTap();
+    }
+
     Navigator.pop(
       context,
-      _DropdownRouteResult<T>(widget.route.items[widget.itemIndex].item.value),
+      _DropdownRouteResult<T>(dropdownMenuItem.value),
     );
   }
 
@@ -197,12 +203,14 @@ class _DropdownMenu<T> extends StatefulWidget {
     this.route,
     this.buttonRect,
     this.constraints,
+    this.dropdownColor,
   }) : super(key: key);
 
   final _DropdownRoute<T> route;
   final EdgeInsets padding;
   final Rect buttonRect;
   final BoxConstraints constraints;
+  final Color dropdownColor;
 
   @override
   _DropdownMenuState<T> createState() => _DropdownMenuState<T>();
@@ -259,7 +267,7 @@ class _DropdownMenuState<T> extends State<_DropdownMenu<T>> {
       opacity: _fadeOpacity,
       child: CustomPaint(
         painter: _DropdownMenuPainter(
-          color: Theme.of(context).canvasColor,
+          color: widget.dropdownColor ?? Theme.of(context).canvasColor,
           elevation: route.elevation,
           selectedIndex: route.selectedIndex,
           resize: _resize,
@@ -360,6 +368,7 @@ class _DropdownMenuRouteLayout<T> extends SingleChildLayoutDelegate {
 // We box the return value so that the return value can be null. Otherwise,
 // canceling the route (which returns null) would get confused with actually
 // returning a real null value.
+@immutable
 class _DropdownRouteResult<T> {
   const _DropdownRouteResult(this.result);
 
@@ -394,6 +403,7 @@ class _DropdownRoute<T> extends PopupRoute<_DropdownRouteResult<T>> {
     @required this.style,
     this.barrierLabel,
     this.itemHeight,
+    this.dropdownColor,
   }) : assert(style != null),
        itemHeights = List<double>.filled(items.length, itemHeight ?? kMinInteractiveDimension);
 
@@ -405,6 +415,7 @@ class _DropdownRoute<T> extends PopupRoute<_DropdownRouteResult<T>> {
   final ThemeData theme;
   final TextStyle style;
   final double itemHeight;
+  final Color dropdownColor;
 
   final List<double> itemHeights;
   ScrollController scrollController;
@@ -435,6 +446,7 @@ class _DropdownRoute<T> extends PopupRoute<_DropdownRouteResult<T>> {
           elevation: elevation,
           theme: theme,
           style: style,
+          dropdownColor: dropdownColor,
         );
       }
     );
@@ -520,6 +532,7 @@ class _DropdownRoutePage<T> extends StatelessWidget {
     this.elevation = 8,
     this.theme,
     this.style,
+    this.dropdownColor,
   }) : super(key: key);
 
   final _DropdownRoute<T> route;
@@ -531,6 +544,7 @@ class _DropdownRoutePage<T> extends StatelessWidget {
   final int elevation;
   final ThemeData theme;
   final TextStyle style;
+  final Color dropdownColor;
 
   @override
   Widget build(BuildContext context) {
@@ -553,6 +567,7 @@ class _DropdownRoutePage<T> extends StatelessWidget {
       padding: padding.resolve(textDirection),
       buttonRect: buttonRect,
       constraints: constraints,
+      dropdownColor: dropdownColor,
     );
 
     if (theme != null)
@@ -656,10 +671,14 @@ class DropdownMenuItem<T> extends _DropdownMenuItemContainer {
   /// The [child] argument is required.
   const DropdownMenuItem({
     Key key,
+    this.onTap,
     this.value,
     @required Widget child,
   }) : assert(child != null),
        super(key: key, child: child);
+
+  /// Called when the dropdown menu item is tapped.
+  final VoidCallback onTap;
 
   /// The value to return if the user selects this menu item.
   ///
@@ -779,6 +798,10 @@ class DropdownButton<T> extends StatefulWidget {
   /// The [elevation] and [iconSize] arguments must not be null (they both have
   /// defaults, so do not need to be specified). The boolean [isDense] and
   /// [isExpanded] arguments must not be null.
+  ///
+  /// The [dropdownColor] argument specifies the background color of the
+  /// dropdown when it is open. If it is null, the current theme's
+  /// [ThemeData.canvasColor] will be used instead.
   DropdownButton({
     Key key,
     @required this.items,
@@ -787,6 +810,7 @@ class DropdownButton<T> extends StatefulWidget {
     this.hint,
     this.disabledHint,
     @required this.onChanged,
+    this.onTap,
     this.elevation = 8,
     this.style,
     this.underline,
@@ -800,6 +824,7 @@ class DropdownButton<T> extends StatefulWidget {
     this.focusColor,
     this.focusNode,
     this.autofocus = false,
+    this.dropdownColor,
   }) : assert(items == null || items.isEmpty || value == null ||
               items.where((DropdownMenuItem<T> item) {
                 return item.value == value;
@@ -857,6 +882,14 @@ class DropdownButton<T> extends StatefulWidget {
   /// be displayed.
   /// {@endtemplate}
   final ValueChanged<T> onChanged;
+
+  /// Called when the dropdown button is tapped.
+  ///
+  /// This is distinct from [onChanged], which is called when the user
+  /// selects an item from the dropdown.
+  ///
+  /// The callback will not be invoked if the dropdown button is disabled.
+  final VoidCallback onTap;
 
   /// A builder to customize the dropdown buttons corresponding to the
   /// [DropdownMenuItem]s in [items].
@@ -1030,6 +1063,12 @@ class DropdownButton<T> extends StatefulWidget {
   /// {@macro flutter.widgets.Focus.autofocus}
   final bool autofocus;
 
+  /// The background color of the dropdown.
+  ///
+  /// If it is not provided, the theme's [ThemeData.canvasColor] will be used
+  /// instead.
+  final Color dropdownColor;
+
   @override
   _DropdownButtonState<T> createState() => _DropdownButtonState<T>();
 }
@@ -1170,6 +1209,7 @@ class _DropdownButtonState<T> extends State<DropdownButton<T>> with WidgetsBindi
       style: _textStyle,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       itemHeight: widget.itemHeight,
+      dropdownColor: widget.dropdownColor,
     );
 
     Navigator.push(context, _dropdownRoute).then<void>((_DropdownRouteResult<T> newValue) {
@@ -1179,6 +1219,10 @@ class _DropdownButtonState<T> extends State<DropdownButton<T>> with WidgetsBindi
       if (widget.onChanged != null)
         widget.onChanged(newValue.result);
     });
+
+    if (widget.onTap != null) {
+      widget.onTap();
+    }
   }
 
   Action _createAction() {
@@ -1402,6 +1446,7 @@ class DropdownButtonFormField<T> extends FormField<T> {
     DropdownButtonBuilder selectedItemBuilder,
     Widget hint,
     @required this.onChanged,
+    VoidCallback onTap,
     this.decoration = const InputDecoration(),
     FormFieldSetter<T> onSaved,
     FormFieldValidator<T> validator,
@@ -1452,6 +1497,7 @@ class DropdownButtonFormField<T> extends FormField<T> {
                  selectedItemBuilder: selectedItemBuilder,
                  hint: hint,
                  onChanged: onChanged == null ? null : state.didChange,
+                 onTap: onTap,
                  disabledHint: disabledHint,
                  elevation: elevation,
                  style: style,

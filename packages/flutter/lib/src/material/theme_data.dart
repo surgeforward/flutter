@@ -1636,8 +1636,9 @@ class MaterialBasedCupertinoThemeData extends CupertinoThemeData {
   }
 }
 
+@immutable
 class _IdentityThemeDataCacheKey {
-  _IdentityThemeDataCacheKey(this.baseTheme, this.localTextGeometry);
+  const _IdentityThemeDataCacheKey(this.baseTheme, this.localTextGeometry);
 
   final ThemeData baseTheme;
   final TextTheme localTextGeometry;
@@ -1713,6 +1714,7 @@ class _FifoCache<K, V> {
 ///  * [ThemeData.visualDensity], where this property is used to specify the base
 ///    horizontal density of Material components.
 ///  * [Material design guidance on density](https://material.io/design/layout/applying-density.html).
+@immutable
 class VisualDensity with Diagnosticable {
   /// A const constructor for [VisualDensity].
   ///
@@ -1761,6 +1763,24 @@ class VisualDensity with Diagnosticable {
   ///
   /// It corresponds to a density value of -2 in both axes.
   static const VisualDensity compact = VisualDensity(horizontal: -2.0, vertical: -2.0);
+
+  /// Returns a visual density that is adaptive based on the [defaultTargetPlatform].
+  ///
+  /// For desktop platforms, this returns [compact], and for other platforms,
+  /// it returns a default-constructed [VisualDensity].
+  static VisualDensity get adaptivePlatformDensity {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.fuchsia:
+        break;
+      case TargetPlatform.linux:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+        return compact;
+    }
+    return const VisualDensity();
+  }
 
   /// Copy the current [VisualDensity] with the given values replacing the
   /// current values.
