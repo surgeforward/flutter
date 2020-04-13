@@ -470,8 +470,10 @@ if (pluginsFile.exists()) {
 
 plugins.each { name, path ->
     def pluginDirectory = flutterProjectRoot.resolve(path).resolve('android').toFile()
-    include ":$name"
-    project(":$name").projectDir = pluginDirectory
+    if (pluginDirectory.exists()) {
+        include ":$name"
+        project(":$name").projectDir = pluginDirectory
+    }
 }
 ''';
 
@@ -2633,9 +2635,11 @@ FlutterProject generateFakeAppBundle(String directoryName, String fileName) {
 }
 
 FakePlatform fakePlatform(String name) {
-  return FakePlatform.fromPlatform(const LocalPlatform())
-    ..operatingSystem = name
-    ..stdoutSupportsAnsi = false;
+  return FakePlatform(
+    environment: <String, String>{'HOME': '/path/to/home'},
+    operatingSystem: name,
+    stdoutSupportsAnsi: false,
+  );
 }
 
 class FakeGradleUtils extends GradleUtils {
