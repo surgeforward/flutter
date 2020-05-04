@@ -24,8 +24,10 @@ class BuildInfo {
     this.splitDebugInfoPath,
     this.dartObfuscation = false,
     this.dartDefines = const <String>[],
+    this.bundleSkSLPath,
     this.dartExperiments = const <String>[],
     @required this.treeShakeIcons,
+    this.performanceMeasurementFile,
   });
 
   final BuildMode mode;
@@ -74,6 +76,11 @@ class BuildInfo {
   /// Whether to apply dart source code obfuscation.
   final bool dartObfuscation;
 
+  /// An optional path to a JSON containing object SkSL shaders
+  ///
+  /// Currently this is only supported for Android builds.
+  final String bundleSkSLPath;
+
   /// Additional constant values to be made available in the Dart program.
   ///
   /// These values can be used with the const `fromEnvironment` constructors of
@@ -82,6 +89,13 @@ class BuildInfo {
 
   /// A list of Dart experiments.
   final List<String> dartExperiments;
+
+  /// The name of a file where flutter assemble will output performance
+  /// information in a JSON format.
+  ///
+  /// This is not considered a build input and will not force assemble to
+  /// rerun tasks.
+  final String performanceMeasurementFile;
 
   static const BuildInfo debug = BuildInfo(BuildMode.debug, null, treeShakeIcons: false);
   static const BuildInfo profile = BuildInfo(BuildMode.profile, null, treeShakeIcons: kIconTreeShakerEnabledDefault);
@@ -137,6 +151,8 @@ class BuildInfo {
         'TRACK_WIDGET_CREATION': trackWidgetCreation.toString(),
       if (treeShakeIcons != null)
         'TREE_SHAKE_ICONS': treeShakeIcons.toString(),
+      if (performanceMeasurementFile != null)
+        'PERFORMANCE_MEASUREMENT_FILE': performanceMeasurementFile,
     };
   }
 }
